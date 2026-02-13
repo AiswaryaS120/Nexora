@@ -1,313 +1,236 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  TrendingUp, Code, Brain, MessageSquare, 
-  Calendar, Award, Target, Zap 
-} from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import toast from 'react-hot-toast';
-import axios from 'axios';
+import Editor from '@monaco-editor/react';
 
-function Dashboard() {
-  const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    totalProblems: 0,
-    aptitudeScore: 0,
-    interviewQuestions: 0,
-    streakDays: 0
-  });
+export default function CodingEnvironment() {
+  const [code, setCode] = useState(
+    '# Welcome to Nexora Coding Environment\n' +
+    '# Select language and write code below\n\n' +
+    'print("Hello, Nexora! 🚀")\n' +
+    'print(2 + 2)'
+  );
 
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [language, setLanguage] = useState('python');
+  const [output, setOutput] = useState([]);
+  const [error, setError] = useState('');
+  const [pyodide, setPyodide] = useState(null);
+  const [loadingPyodide, setLoadingPyodide] = useState(false);
 
+  // Load Pyodide once when Python is selected
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      const token = localStorage.getItem('token');
-      const userId = localStorage.getItem('userId');
+    if (language === 'python' && !pyodide) {
+      setLoadingPyodide(true);
+      import('https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js')
+        .then(async () => {
+          const py = await window.loadPyodide({
+            indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.1/full/'
+          });
+          setPyodide(py);
+          setLoadingPyodide(false);
+        })
+        .catch(err => {
+          setError('Failed to load Python runtime. Try again later.');
+          setLoadingPyodide(false);
+        });
+    }
+  }, [language, pyodide]);
 
-      if (!token || !userId) {
-        toast.error('Please login to see your dashboard');
-        setLoading(false);
+  const runCode = () => {
+    setOutput([]);
+    setError('');
+
+    if (language === 'javascript') {
+      try {
+        const logs = [];
+        const fakeConsole = {
+          log: (...args) => {
+            const line = args.map(arg =>
+              typeof arg === 'object' && arg !== null
+                ? JSON.stringify(arg, null, 2)
+                : String(arg)
+            ).join(' ');
+            logs.push({ type: 'log', content: line });
+          }
+        };
+
+        const func = new Function('console', code);
+        func(fakeConsole);
+
+        setOutput(logs);
+      } catch (err) {
+        setError(err.message || 'JavaScript execution failed');
+      }
+    } else if (language === 'python') {
+      if (!pyodide) {
+        setError('Python runtime is still loading... please wait.');
         return;
       }
 
       try {
-        // Fetch progress data from backend
-        const response = await axios.get(`http://localhost:5000/api/progress/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        // Custom print (already good)
+        pyodide.globals.set('nexora_output', pyodide.globals.get('list')());
+        pyodide.runPython(`
+          def nexora_print(*args, sep=' ', end='\\n'):
+              line = sep.join(map(str, args)) + end
+              nexora_output.append(line)
+          __builtins__.print = nexora_print
+        `);
 
-        const progress = response.data.progress || [];
+        // Add fake input using browser prompt
+        pyodide.runPython(`
+          def input(prompt=''):
+              from js import prompt as js_prompt
+              return js_prompt(prompt) or ''
+        `);
 
-        if (progress.length > 0) {
-          // Calculate real stats
-          const totalProblems = progress.reduce((sum, p) => sum + (p.codingProblems || 0), 0);
-          const avgScore = progress.length > 0 
-            ? progress.reduce((sum, p) => sum + (p.aptitudeScore || 0), 0) / progress.length 
-            : 0;
-          const totalQuestions = progress.reduce((sum, p) => sum + (p.interviewQuestions || 0), 0);
-          const streak = calculateStreak(progress);
+        // Run user's code
+        pyodide.runPython(code);
 
-          setStats({
-            totalProblems,
-            aptitudeScore: Math.round(avgScore),
-            interviewQuestions: totalQuestions,
-            streakDays: streak
-          });
+        // Get output - fixed version (no .toJs() call)
+        const pyOutputList = pyodide.globals.get('nexora_output');
+        const lines = pyOutputList.map(line => ({
+          type: 'log',
+          content: line
+        }));
 
-          // Last 7 days for chart
-          const last7 = progress.slice(-7).map(p => ({
-            date: new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            problems: p.codingProblems || 0,
-            score: p.aptitudeScore || 0
-          }));
-          setRecentActivity(last7);
-        }
-      } catch (error) {
-        console.error('Dashboard fetch error:', error);
-        toast.error('Could not load your dashboard data');
-      } finally {
-        setLoading(false);
+        setOutput(lines.length > 0 ? lines : [{ type: 'log', content: '(no output)' }]);
+      } catch (err) {
+        setError(err.message || 'Python execution failed');
       }
-    };
-
-    fetchDashboardData();
-  }, []);
-
-  const calculateStreak = (progress) => {
-    if (progress.length === 0) return 0;
-    
-    const sortedDates = progress
-      .map(p => new Date(p.date).toDateString())
-      .sort((a, b) => new Date(b) - new Date(a));
-    
-    let streak = 1;
-    const today = new Date().toDateString();
-    
-    if (sortedDates[0] !== today && 
-        new Date(sortedDates[0]).getTime() !== new Date(today).getTime() - 86400000) {
-      return 0; // Streak broken
-    }
-    
-    for (let i = 1; i < sortedDates.length; i++) {
-      const diff = (new Date(sortedDates[i-1]) - new Date(sortedDates[i])) / (1000 * 60 * 60 * 24);
-      if (diff <= 1) streak++;
-      else break;
-    }
-    return streak;
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
+    } else {
+      setError(`Running ${language} is not supported yet.`);
     }
   };
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1
-    }
+  const clearOutput = () => {
+    setOutput([]);
+    setError('');
+  };
+
+  const copyOutput = () => {
+    const text = output.map(line => line.content).join('\n');
+    navigator.clipboard.writeText(text);
+    alert('Output copied to clipboard!');
   };
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="dashboard"
-    >
-      {loading && (
-        <div className="flex-center" style={{ minHeight: '60vh' }}>
-          <div className="spinner" style={{ margin: '0 auto' }} />
-          <p className="mt-4 text-gray-400">Loading your dashboard...</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-950 to-purple-950 text-white p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+          <h1 className="text-3xl md:text-4xl font-bold text-indigo-400">
+            Nexora Live Coding
+          </h1>
+
+          <div className="flex items-center gap-4 flex-wrap">
+            <select
+              value={language}
+              onChange={(e) => {
+                setLanguage(e.target.value);
+                if (e.target.value === 'python') {
+                  setCode('# Python example\nprint("Hello Nexora!")\nprint(2 + 2)');
+                } else if (e.target.value === 'javascript') {
+                  setCode('// JavaScript example\nconsole.log("Hello Nexora! 🚀");\nconsole.log(2 + 2);');
+                } else {
+                  setCode(`// ${e.target.value} support coming soon...`);
+                }
+              }}
+              className="bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="cpp">C++ (editor only)</option>
+              <option value="java">Java (editor only)</option>
+            </select>
+
+            <button
+              onClick={runCode}
+              disabled={loadingPyodide && language === 'python'}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                loadingPyodide && language === 'python'
+                  ? 'bg-gray-600 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
+            >
+              {loadingPyodide && language === 'python' ? 'Loading Python...' : 'Run Code'}
+            </button>
+
+            <button
+              onClick={clearOutput}
+              className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              Clear
+            </button>
+          </div>
         </div>
-      )}
 
-      {!loading && (
-        <>
-          <motion.div variants={itemVariants} className="page-header">
-            <h1 className="page-title">Dashboard</h1>
-            <p className="page-subtitle">Track your placement preparation journey</p>
-          </motion.div>
+        {/* Editor */}
+        <div className="border border-gray-700 rounded-xl overflow-hidden shadow-2xl mb-6">
+          <Editor
+            height="65vh"
+            language={language}
+            theme="vs-dark"
+            value={code}
+            onChange={(value) => setCode(value || '')}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 15,
+              lineNumbers: 'on',
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              wordWrap: 'on',
+              tabSize: 2,
+            }}
+          />
+        </div>
 
-          {/* Stats Grid */}
-          <motion.div variants={itemVariants} className="grid grid-4 mb-3">
-            <div className="stat-card" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-              <div className="flex-between">
-                <div>
-                  <div className="stat-label">Coding Problems</div>
-                  <div className="stat-value">{stats.totalProblems}</div>
-                  <div className="stat-trend">
-                    <TrendingUp size={16} /> {stats.totalProblems > 0 ? '+this week' : 'Start solving!'}
-                  </div>
-                </div>
-                <Code size={48} style={{ opacity: 0.3 }} />
-              </div>
-            </div>
-
-            <div className="stat-card" style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
-              <div className="flex-between">
-                <div>
-                  <div className="stat-label">Aptitude Score</div>
-                  <div className="stat-value">{stats.aptitudeScore}%</div>
-                  <div className="stat-trend">
-                    <TrendingUp size={16} /> {stats.aptitudeScore > 0 ? 'Keep improving!' : 'Start practicing'}
-                  </div>
-                </div>
-                <Brain size={48} style={{ opacity: 0.3 }} />
-              </div>
-            </div>
-
-            <div className="stat-card" style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
-              <div className="flex-between">
-                <div>
-                  <div className="stat-label">Interview Questions</div>
-                  <div className="stat-value">{stats.interviewQuestions}</div>
-                  <div className="stat-trend">
-                    <TrendingUp size={16} /> {stats.interviewQuestions > 0 ? 'Great job!' : 'Start practicing'}
-                  </div>
-                </div>
-                <MessageSquare size={48} style={{ opacity: 0.3 }} />
-              </div>
-            </div>
-
-            <div className="stat-card" style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' }}>
-              <div className="flex-between">
-                <div>
-                  <div className="stat-label">Streak</div>
-                  <div className="stat-value">{stats.streakDays}</div>
-                  <div className="stat-trend">
-                    <Zap size={16} /> {stats.streakDays > 0 ? 'Keep it up!' : 'Start your streak today!'}
-                  </div>
-                </div>
-                <Award size={48} style={{ opacity: 0.3 }} />
-              </div>
-            </div>
-          </motion.div>
-
-          <div className="grid grid-2">
-            {/* Progress Chart */}
-            <motion.div variants={itemVariants} className="card">
-              <div className="card-header">
-                <h2 className="card-title">
-                  <TrendingUp size={24} />
-                  Weekly Progress
-                </h2>
-              </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={recentActivity.length > 0 ? recentActivity : [{ date: 'No data', problems: 0, score: 0 }]}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line 
-                    type="monotone" 
-                    dataKey="problems" 
-                    stroke="#667eea" 
-                    strokeWidth={3}
-                    name="Problems Solved"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="score" 
-                    stroke="#f5576c" 
-                    strokeWidth={3}
-                    name="Aptitude Score"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </motion.div>
-
-            {/* Quick Actions */}
-            <motion.div variants={itemVariants} className="card">
-              <div className="card-header">
-                <h2 className="card-title">
-                  <Target size={24} />
-                  Quick Actions
-                </h2>
-              </div>
-              <div className="grid gap-2">
-                <button 
-                  onClick={() => navigate('/coding')}
-                  className="btn btn-primary"
-                >
-                  <Code size={20} />
-                  Start Coding Session
-                </button>
-                <button 
-                  onClick={() => navigate('/aptitude')}
-                  className="btn btn-secondary"
-                >
-                  <Brain size={20} />
-                  Take Aptitude Test
-                </button>
-                <button 
-                  onClick={() => navigate('/interview')}
-                  className="btn btn-secondary"
-                >
-                  <MessageSquare size={20} />
-                  Practice Interview Questions
-                </button>
-                <button 
-                  onClick={() => navigate('/progress')}
-                  className="btn btn-secondary"
-                >
-                  <Calendar size={20} />
-                  Set Daily Goal
-                </button>
-              </div>
-            </motion.div>
+        {/* Beautiful Output Box - Now looks like OnlineGDB / Replit */}
+        <div className="bg-[#1e1e1e] rounded-xl border border-[#2a2a2a] shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-3 bg-[#252526] border-b border-[#333]">
+            <h3 className="text-base font-medium text-[#00ff9d]">
+              Output
+            </h3>
+            {output.length > 0 && (
+              <button
+                onClick={copyOutput}
+                className="text-gray-400 hover:text-[#00ff9d] text-sm flex items-center gap-1"
+              >
+                Copy
+              </button>
+            )}
           </div>
 
-          {/* Today's Goals - kept as is (hardcoded) */}
-          <motion.div variants={itemVariants} className="card mt-3">
-            <div className="card-header">
-              <h2 className="card-title">
-                <Target size={24} />
-                Today's Goals
-              </h2>
-            </div>
-            <div className="grid grid-3">
-              <div>
-                <div className="flex-between mb-1">
-                  <span>Coding Problems</span>
-                  <span className="badge badge-success">6/10</span>
+          {/* Output content - scrollable, monospace, clean */}
+          <div 
+            className="p-5 font-mono text-sm leading-6 max-h-96 overflow-y-auto bg-[#0d1117]"
+            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
+          >
+            {output.length === 0 && !error ? (
+              <p className="text-gray-500 italic">
+                Run your code to see output here...
+              </p>
+            ) : (
+              output.map((line, i) => (
+                <div key={i} className="mb-0.5 text-[#d4d4d4]">
+                  {line.content}
                 </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: '60%' }}></div>
-                </div>
+              ))
+            )}
+
+            {error && (
+              <div className="text-red-400 font-medium whitespace-pre-wrap mt-2">
+                {error}
               </div>
-              <div>
-                <div className="flex-between mb-1">
-                  <span>Aptitude Practice</span>
-                  <span className="badge badge-warning">3/5</span>
-                </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: '60%' }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex-between mb-1">
-                  <span>Interview Questions</span>
-                  <span className="badge badge-success">5/5</span>
-                </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: '100%' }}></div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </motion.div>
+            )}
+          </div>
+        </div>
+
+        {/* Info */}
+        <p className="mt-6 text-gray-400 text-sm text-center">
+          JavaScript & Python run fully in your browser (no server needed).  
+          C++/Java editor support only for now — execution coming soon!
+        </p>
+      </div>
+    </div>
   );
 }
-
-export default Dashboard;
