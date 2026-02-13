@@ -323,6 +323,19 @@ app.post('/api/progress', authMiddleware, async (req, res) => {
 });
 
 // Get progress data (only own data allowed)
+// New: allow fetching progress using the JWT (no :userId param) for convenience from the frontend
+app.get('/api/progress', authMiddleware, async (req, res) => {
+  try {
+    const progress = await Progress.find({ userId: req.userId })
+      .sort({ date: -1 })
+      .limit(30);
+    res.json({ success: true, progress });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch progress' });
+  }
+});
+
+// Backwards-compatible route that takes userId in the path (keeps existing security checks)
 app.get('/api/progress/:userId', authMiddleware, async (req, res) => {
   try {
     // Security: only allow fetching own data
@@ -340,6 +353,26 @@ app.get('/api/progress/:userId', authMiddleware, async (req, res) => {
 });
 
 // Get analytics (only own data allowed)
+// Allow fetching analytics without a path param using authenticated user (convenience endpoint)
+app.get('/api/analytics', authMiddleware, async (req, res) => {
+  try {
+    const progress = await Progress.find({ userId: req.userId });
+    const analytics = {
+      totalProblems: progress.reduce((sum, p) => sum + p.codingProblems, 0),
+      avgAptitudeScore: progress.length > 0
+        ? progress.reduce((sum, p) => sum + p.aptitudeScore, 0) / progress.length
+        : 0,
+      totalInterviewQuestions: progress.reduce((sum, p) => sum + p.interviewQuestions, 0),
+      weakTopics: [...new Set(progress.flatMap(p => p.weakTopics))],
+      streakDays: calculateStreak(progress)
+    };
+    res.json({ success: true, analytics });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// Backwards-compatible analytics route that accepts a userId path param
 app.get('/api/analytics/:userId', authMiddleware, async (req, res) => {
   try {
     // Security: only allow fetching own data

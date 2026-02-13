@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 
 export default function CodingEnvironment() {
+  const navigate = useNavigate();
+
   const [code, setCode] = useState(
     '# Welcome to Nexora Coding Environment\n' +
     '# Select language and write code below\n\n' +
@@ -16,23 +19,33 @@ export default function CodingEnvironment() {
   const [loadingPyodide, setLoadingPyodide] = useState(false);
 
   // Load Pyodide once when Python is selected
-  useEffect(() => {
-    if (language === 'python' && !pyodide) {
-      setLoadingPyodide(true);
-      import('https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js')
-        .then(async () => {
-          const py = await window.loadPyodide({
-            indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.1/full/'
-          });
-          setPyodide(py);
-          setLoadingPyodide(false);
-        })
-        .catch(err => {
-          setError('Failed to load Python runtime. Try again later.');
-          setLoadingPyodide(false);
+ useEffect(() => {
+  if (language === 'python' && !pyodide) {
+    setLoadingPyodide(true);
+
+    const script = document.createElement('script');
+    script.src = "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js";
+    script.onload = async () => {
+      try {
+        const py = await window.loadPyodide({
+          indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/"
         });
-    }
-  }, [language, pyodide]);
+        setPyodide(py);
+      } catch (err) {
+        setError("Failed to initialize Python runtime.");
+      }
+      setLoadingPyodide(false);
+    };
+
+    script.onerror = () => {
+      setError("Failed to load Python runtime.");
+      setLoadingPyodide(false);
+    };
+
+    document.body.appendChild(script);
+  }
+}, [language, pyodide]);
+
 
   const runCode = () => {
     setOutput([]);
@@ -66,7 +79,6 @@ export default function CodingEnvironment() {
       }
 
       try {
-        // Custom print (already good)
         pyodide.globals.set('nexora_output', pyodide.globals.get('list')());
         pyodide.runPython(`
           def nexora_print(*args, sep=' ', end='\\n'):
@@ -75,17 +87,14 @@ export default function CodingEnvironment() {
           __builtins__.print = nexora_print
         `);
 
-        // Add fake input using browser prompt
         pyodide.runPython(`
           def input(prompt=''):
               from js import prompt as js_prompt
               return js_prompt(prompt) or ''
         `);
 
-        // Run user's code
         pyodide.runPython(code);
 
-        // Get output - fixed version (no .toJs() call)
         const pyOutputList = pyodide.globals.get('nexora_output');
         const lines = pyOutputList.map(line => ({
           type: 'log',
@@ -113,15 +122,69 @@ export default function CodingEnvironment() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-950 to-purple-950 text-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <div style={{ background: '#ffffff', minHeight: '100vh' }}>
+      {/* Simple blue top bar - consistent with app theme */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '70px',
+        background: '#011024',
+        color: '#e8c441',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 1.5rem',
+        zIndex: 1000,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+        fontWeight: 600,
+        fontSize: '1.15rem'
+      }}>
+        <button
+          onClick={() => navigate('/dashboard')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#e8c441',
+            fontSize: '1.15rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.8rem'
+          }}
+        >
+          ← Back to Dashboard
+        </button>
+      </div>
+
+      {/* Spacer to prevent content overlap */}
+      <div style={{ height: '70px' }} />
+
+      {/* Main content */}
+      <div style={{ padding: '2rem 1.5rem', maxWidth: '1400px', margin: '0 auto' }}>
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-          <h1 className="text-3xl md:text-4xl font-bold text-indigo-400">
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
+          marginBottom: '2rem'
+        }}>
+          <h1 style={{
+            color: '#011024',
+            fontSize: '2.5rem',
+            fontWeight: 700,
+            margin: 0
+          }}>
             Nexora Live Coding
           </h1>
 
-          <div className="flex items-center gap-4 flex-wrap">
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '1rem'
+          }}>
             <select
               value={language}
               onChange={(e) => {
@@ -134,7 +197,15 @@ export default function CodingEnvironment() {
                   setCode(`// ${e.target.value} support coming soon...`);
                 }
               }}
-              className="bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              style={{
+                padding: '0.75rem 1rem',
+                background: '#011024',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                cursor: 'pointer'
+              }}
             >
               <option value="javascript">JavaScript</option>
               <option value="python">Python</option>
@@ -145,26 +216,47 @@ export default function CodingEnvironment() {
             <button
               onClick={runCode}
               disabled={loadingPyodide && language === 'python'}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                loadingPyodide && language === 'python'
-                  ? 'bg-gray-600 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700'
-              }`}
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: loadingPyodide && language === 'python' ? '#6b7280' : '#011024',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: loadingPyodide && language === 'python' ? 'not-allowed' : 'pointer',
+                transition: 'background 0.2s'
+              }}
             >
               {loadingPyodide && language === 'python' ? 'Loading Python...' : 'Run Code'}
             </button>
 
             <button
               onClick={clearOutput}
-              className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg font-medium transition-colors"
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
             >
               Clear
             </button>
           </div>
         </div>
 
-        {/* Editor */}
-        <div className="border border-gray-700 rounded-xl overflow-hidden shadow-2xl mb-6">
+        {/* Editor Card */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+          marginBottom: '2rem',
+          border: '1px solid #e8c441'
+        }}>
           <Editor
             height="65vh"
             language={language}
@@ -183,51 +275,84 @@ export default function CodingEnvironment() {
           />
         </div>
 
-        {/* Beautiful Output Box - Now looks like OnlineGDB / Replit */}
-        <div className="bg-[#1e1e1e] rounded-xl border border-[#2a2a2a] shadow-2xl overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3 bg-[#252526] border-b border-[#333]">
-            <h3 className="text-base font-medium text-[#00ff9d]">
+        {/* Output Card */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+          border: '1px solid #e8c441'
+        }}>
+          <div style={{
+            padding: '1rem 1.5rem',
+            background: '#011024',
+            color: '#e8c441',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
               Output
             </h3>
+
             {output.length > 0 && (
               <button
                 onClick={copyOutput}
-                className="text-gray-400 hover:text-[#00ff9d] text-sm flex items-center gap-1"
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid #e8c441',
+                  color: '#e8c441',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 500
+                }}
               >
-                Copy
+                Copy Output
               </button>
             )}
           </div>
 
-          {/* Output content - scrollable, monospace, clean */}
-          <div 
-            className="p-5 font-mono text-sm leading-6 max-h-96 overflow-y-auto bg-[#0d1117]"
-            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
-          >
+          <div style={{
+            padding: '1.5rem',
+            fontFamily: 'monospace',
+            fontSize: '1rem',
+            background: '#0f172a',
+            color: '#e2e8f0',
+            minHeight: '200px',
+            maxHeight: '400px',
+            overflowY: 'auto',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-all'
+          }}>
             {output.length === 0 && !error ? (
-              <p className="text-gray-500 italic">
+              <p style={{ color: '#94a3b8', fontStyle: 'italic' }}>
                 Run your code to see output here...
               </p>
             ) : (
               output.map((line, i) => (
-                <div key={i} className="mb-0.5 text-[#d4d4d4]">
+                <div key={i} style={{ marginBottom: '0.25rem' }}>
                   {line.content}
                 </div>
               ))
             )}
 
             {error && (
-              <div className="text-red-400 font-medium whitespace-pre-wrap mt-2">
+              <div style={{ color: '#f87171', fontWeight: 500, whiteSpace: 'pre-wrap' }}>
                 {error}
               </div>
             )}
           </div>
         </div>
 
-        {/* Info */}
-        <p className="mt-6 text-gray-400 text-sm text-center">
-          JavaScript & Python run fully in your browser (no server needed).  
+        {/* Info text */}
+        <p style={{
+          marginTop: '2rem',
+          color: '#6b7280',
+          textAlign: 'center',
+          fontSize: '0.95rem'
+        }}>
+          JavaScript & Python run fully in your browser.  
           C++/Java editor support only for now — execution coming soon!
         </p>
       </div>

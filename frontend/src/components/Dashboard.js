@@ -23,13 +23,20 @@ function Dashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
+
+  useEffect(() => {
     const fetchDashboardData = async () => {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
 
+      // If we don't have a token or userId, send the user to login instead of calling the API
       if (!token || !userId) {
-        toast.error('Please login to see your dashboard');
-        setLoading(false);
+        navigate('/login', { replace: true });
         return;
       }
 
@@ -121,7 +128,7 @@ function Dashboard() {
         top: 0,
         left: 0,
         right: 0,
-        height: '80px',                      // ← increased from 64px
+        height: '80px',
         background: '#011024',
         color: 'white',
         display: 'flex',
@@ -153,8 +160,8 @@ function Dashboard() {
         </h1>
       </div>
 
-      {/* Invisible spacer so content doesn't hide under top bar */}
-     
+      {/* Invisible spacer */}
+      <div style={{ height: '80px' }} />
 
       {/* Slide-in sidebar menu */}
       <motion.div
@@ -170,7 +177,7 @@ function Dashboard() {
           background: '#011024',
           color: 'white',
           zIndex: 999,
-          paddingTop: '100px',                  // ← matched to taller top bar
+          paddingTop: '100px',
           padding: '1.5rem',
           boxShadow: '4px 0 25px rgba(0,0,0,0.35)'
         }}
@@ -178,50 +185,37 @@ function Dashboard() {
         <nav>
           <ul style={{ listStyle: 'none', padding: 0 }}>
             <li style={{ margin: '1rem 0' }}>
-              <button
-                onClick={() => { navigate('/dashboard'); setMenuOpen(false); }}
-                style={menuItemStyle}
-              >
+              <button onClick={() => { navigate('/dashboard'); setMenuOpen(false); }} style={menuItemStyle}>
                 <TrendingUp size={22} /> Dashboard
               </button>
             </li>
             <li style={{ margin: '1rem 0' }}>
-              <button
-                onClick={() => { navigate('/track-progress'); setMenuOpen(false); }}
-                style={menuItemStyle}
-              >
+              <button onClick={() => { navigate('/track-progress'); setMenuOpen(false); }} style={menuItemStyle}>
                 <Target size={22} /> Track Progress
               </button>
             </li>
             <li style={{ margin: '1rem 0' }}>
-              <button
-                onClick={() => { navigate('/resume-ai'); setMenuOpen(false); }}
-                style={menuItemStyle}
-              >
+              <button onClick={() => { navigate('/resume-ai'); setMenuOpen(false); }} style={menuItemStyle}>
                 <FileText size={22} /> Resume AI
               </button>
             </li>
             <li style={{ margin: '1rem 0' }}>
-              <button
-                onClick={() => { navigate('/mock-interview'); setMenuOpen(false); }}
-                style={menuItemStyle}
-              >
+              <button onClick={() => { navigate('/mock-interview'); setMenuOpen(false); }} style={menuItemStyle}>
                 <MessageSquare size={22} /> Mock Interviews
               </button>
             </li>
             <li style={{ margin: '1rem 0' }}>
-              <button
-                onClick={() => { navigate('/notifications'); setMenuOpen(false); }}
-                style={menuItemStyle}
-              >
+              <button onClick={() => { navigate('/notifications'); setMenuOpen(false); }} style={menuItemStyle}>
                 <Bell size={22} /> Notifications
               </button>
             </li>
             <li style={{ marginTop: '2.5rem' }}>
               <button
                 onClick={() => {
-                  localStorage.clear();
-                  navigate('/login');
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('userId');
+                  setMenuOpen(false);
+                  navigate('/login', { replace: true });
                 }}
                 style={{
                   ...menuItemStyle,
@@ -236,7 +230,7 @@ function Dashboard() {
         </nav>
       </motion.div>
 
-      {/* Overlay to close menu */}
+      {/* Overlay */}
       {menuOpen && (
         <div
           onClick={() => setMenuOpen(false)}
@@ -249,7 +243,7 @@ function Dashboard() {
         />
       )}
 
-      {/* Main content – pushed down enough */}
+      {/* Main content */}
       <div style={{ paddingTop: '20px', padding: '0 1.5rem 1.5rem' }}>
         <motion.div
           variants={containerVariants}
@@ -270,7 +264,6 @@ function Dashboard() {
 
           {!loading && (
             <>
-              {/* Page header with extra spacing & z-index */}
               <motion.div
                 variants={itemVariants}
                 className="page-header"
@@ -384,7 +377,6 @@ function Dashboard() {
                 </div>
               </motion.div>
 
-              {/* The rest of your content remains unchanged */}
               <div className="grid grid-2 section-spacing">
                 <motion.div variants={itemVariants} className="card" style={{
                   background: 'white',
@@ -440,6 +432,7 @@ function Dashboard() {
                       <Code size={20} />
                       Start Coding Session
                     </button>
+
                     <button
                       onClick={() => navigate('/aptitude')}
                       style={{
@@ -455,6 +448,23 @@ function Dashboard() {
                       <Brain size={20} />
                       Take Aptitude Test
                     </button>
+
+                    {/* New Versant Test button - placed right below Aptitude Test */}
+                    <button
+                      onClick={() => navigate('/versant')}
+                      style={{
+                        background: '#011024',
+                        color: 'white',
+                        border: 'none',
+                        padding: '1rem',
+                        borderRadius: '8px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Take Versant Test
+                    </button>
+
                     <button
                       onClick={() => navigate('/interview')}
                       style={{
@@ -470,6 +480,7 @@ function Dashboard() {
                       <MessageSquare size={20} />
                       Practice Interview Questions
                     </button>
+
                     <button
                       onClick={() => navigate('/progress')}
                       style={{
@@ -554,6 +565,5 @@ const menuItemStyle = {
   cursor: 'pointer',
   transition: 'all 0.3s ease'
 };
-
 
 export default Dashboard;

@@ -17,7 +17,6 @@ function ProgressTracker() {
   const [recentProgress, setRecentProgress] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load real progress from backend when component mounts
   useEffect(() => {
     const fetchProgress = async () => {
       const token = localStorage.getItem('token');
@@ -30,17 +29,13 @@ function ProgressTracker() {
       }
 
       try {
-        console.log('Fetching progress for user:', userId); // Debug log
-
-        const response = await axios.get(`http://localhost:5000/api/progress/${userId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        const response = await axios.get(
+          `http://localhost:5000/api/progress/${userId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
         setRecentProgress(response.data.progress || []);
       } catch (error) {
-        console.error('Fetch progress error:', error);
         toast.error('Could not load your progress history');
       } finally {
         setLoading(false);
@@ -52,20 +47,13 @@ function ProgressTracker() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const token = localStorage.getItem('token');
-    if (!token) {
-      toast.error('Please login first');
-      return;
-    }
+    if (!token) return toast.error('Please login first');
 
     try {
       const progressData = {
@@ -83,15 +71,11 @@ function ProgressTracker() {
 
       toast.success('Progress saved successfully! 🎉');
 
-      // Optimistic update (add to list immediately)
       setRecentProgress(prev => [{
         date: new Date().toISOString().split('T')[0],
-        ...progressData,
-        topicsCovered: progressData.topicsCovered,
-        weakTopics: progressData.weakTopics
+        ...progressData
       }, ...prev]);
 
-      // Reset form
       setFormData({
         codingProblems: 0,
         aptitudeScore: 0,
@@ -101,14 +85,7 @@ function ProgressTracker() {
         notes: ''
       });
 
-      // Refresh real data from backend (optional but good)
-      const res = await axios.get(`http://localhost:5000/api/progress/${localStorage.getItem('userId')}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setRecentProgress(res.data.progress || []);
-
     } catch (error) {
-      console.error('Save progress error:', error);
       toast.error(error.response?.data?.error || 'Failed to save progress');
     }
   };
@@ -117,183 +94,197 @@ function ProgressTracker() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="progress-tracker"
+      style={{
+        background: '#ffffff',
+        minHeight: '100vh',
+        padding: '2rem'
+      }}
     >
-      <div className="page-header">
-        <h1 className="page-title">
-          <TrendingUp size={32} />
+      {/* Header */}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <h1 style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          fontSize: '2.2rem',
+          fontWeight: 700,
+          color: '#011024'
+        }}>
+          <TrendingUp size={32} color="#e8c441" />
           Track Your Progress
         </h1>
-        <p className="page-subtitle">Log your daily preparation activities</p>
+        <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>
+          Log your daily preparation activities
+        </p>
       </div>
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <div className="spinner" style={{ margin: '0 auto' }} />
-          <p>Loading your progress...</p>
+          <p style={{ color: '#011024' }}>Loading your progress...</p>
         </div>
       )}
 
-      <div className="grid grid-2">
-        {/* Progress Entry Form */}
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">
-              <Plus size={24} />
-              Add Today's Progress
-            </h2>
-          </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '2rem'
+      }}>
+
+        {/* Form Card */}
+        <div style={cardStyle}>
+          <h2 style={cardTitle}>
+            <Plus size={22} color="#e8c441" />
+            Add Today's Progress
+          </h2>
 
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-2">
-              <div className="form-group">
-                <label className="form-label">Coding Problems Solved</label>
-                <input
-                  type="number"
-                  name="codingProblems"
-                  value={formData.codingProblems}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  min="0"
-                  required
-                />
-              </div>
 
-              <div className="form-group">
-                <label className="form-label">Aptitude Score (%)</label>
-                <input
-                  type="number"
-                  name="aptitudeScore"
-                  value={formData.aptitudeScore}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  min="0"
-                  max="100"
-                  required
-                />
-              </div>
+            <div style={gridTwo}>
+              <Input label="Coding Problems Solved" name="codingProblems" value={formData.codingProblems} onChange={handleInputChange} type="number" required />
+              <Input label="Aptitude Score (%)" name="aptitudeScore" value={formData.aptitudeScore} onChange={handleInputChange} type="number" required />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Topics Covered (comma-separated)</label>
-              <input
-                type="text"
-                name="topicsCovered"
-                value={formData.topicsCovered}
-                onChange={handleInputChange}
-                className="form-input"
-                placeholder="e.g., Arrays, Linked Lists, Binary Trees"
-              />
-            </div>
+            <Input label="Topics Covered (comma-separated)" name="topicsCovered" value={formData.topicsCovered} onChange={handleInputChange} />
+            <Input label="Weak Topics (comma-separated)" name="weakTopics" value={formData.weakTopics} onChange={handleInputChange} />
+            <Input label="Interview Questions Practiced" name="interviewQuestions" value={formData.interviewQuestions} onChange={handleInputChange} type="number" />
 
-            <div className="form-group">
-              <label className="form-label">Weak Topics (comma-separated)</label>
-              <input
-                type="text"
-                name="weakTopics"
-                value={formData.weakTopics}
-                onChange={handleInputChange}
-                className="form-input"
-                placeholder="e.g., Dynamic Programming, Graph Algorithms"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Interview Questions Practiced</label>
-              <input
-                type="number"
-                name="interviewQuestions"
-                value={formData.interviewQuestions}
-                onChange={handleInputChange}
-                className="form-input"
-                min="0"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Notes</label>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={labelStyle}>Notes</label>
               <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleInputChange}
-                className="form-textarea"
-                placeholder="Any additional notes or learnings..."
+                style={textareaStyle}
+                placeholder="Any additional notes..."
               />
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-              <Save size={20} />
+            <button type="submit" style={primaryButton}>
+              <Save size={18} />
               Save Progress
             </button>
           </form>
         </div>
 
-        {/* Recent Progress */}
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">
-              <Calendar size={24} />
-              Recent Activity
-            </h2>
-          </div>
+        {/* Recent Activity */}
+        <div style={cardStyle}>
+          <h2 style={cardTitle}>
+            <Calendar size={22} color="#e8c441" />
+            Recent Activity
+          </h2>
 
           {recentProgress.length === 0 && !loading && (
-            <p style={{ textAlign: 'center', color: 'var(--gray)', padding: '2rem' }}>
-              No progress logged yet. Start adding today!
+            <p style={{ textAlign: 'center', color: '#6b7280' }}>
+              No progress logged yet.
             </p>
           )}
 
-          <div className="grid gap-2">
-            {recentProgress.map((progress, index) => (
-              <div key={index} className="card" style={{ padding: '1rem' }}>
-                <div className="flex-between mb-2">
-                  <h3 style={{ fontWeight: 600 }}>{progress.date}</h3>
-                  <span className="badge badge-success">{progress.aptitudeScore}%</span>
-                </div>
-
-                <div className="grid grid-2 gap-1">
-                  <div>
-                    <small style={{ color: 'var(--gray)' }}>Problems Solved</small>
-                    <div style={{ fontWeight: 600, fontSize: '1.25rem' }}>
-                      {progress.codingProblems}
-                    </div>
-                  </div>
-                  <div>
-                    <small style={{ color: 'var(--gray)' }}>Interview Qs</small>
-                    <div style={{ fontWeight: 600, fontSize: '1.25rem' }}>
-                      {progress.interviewQuestions}
-                    </div>
-                  </div>
-                </div>
-
-                {progress.topicsCovered?.length > 0 && (
-                  <div className="mt-2">
-                    <small style={{ color: 'var(--gray)' }}>Topics Covered:</small>
-                    <div className="flex gap-1 mt-1" style={{ flexWrap: 'wrap' }}>
-                      {progress.topicsCovered.map((topic, i) => (
-                        <span key={i} className="badge badge-success">{topic}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {progress.weakTopics?.length > 0 && (
-                  <div className="mt-2">
-                    <small style={{ color: 'var(--gray)' }}>Weak Areas:</small>
-                    <div className="flex gap-1 mt-1" style={{ flexWrap: 'wrap' }}>
-                      {progress.weakTopics.map((topic, i) => (
-                        <span key={i} className="badge badge-warning">{topic}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+          {recentProgress.map((progress, index) => (
+            <div key={index} style={activityCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <strong style={{ color: '#011024' }}>{progress.date}</strong>
+                <span style={badge}>{progress.aptitudeScore}%</span>
               </div>
-            ))}
-          </div>
+
+              <p style={activityText}>
+                Problems: <strong>{progress.codingProblems}</strong> | Interview Qs: <strong>{progress.interviewQuestions}</strong>
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </motion.div>
   );
 }
+
+/* ---------- Reusable Styles ---------- */
+
+const cardStyle = {
+  background: '#ffffff',
+  padding: '2rem',
+  borderRadius: '14px',
+  boxShadow: '0 6px 20px rgba(0,0,0,0.06)',
+  border: '1px solid #e8c441'
+};
+
+const cardTitle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem',
+  marginBottom: '1.5rem',
+  fontSize: '1.4rem',
+  fontWeight: 600,
+  color: '#011024'
+};
+
+const gridTwo = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: '1rem'
+};
+
+const labelStyle = {
+  display: 'block',
+  marginBottom: '0.5rem',
+  fontWeight: 600,
+  color: '#011024'
+};
+
+const inputStyle = {
+  width: '100%',
+  padding: '0.75rem',
+  borderRadius: '8px',
+  border: '2px solid #011024',
+  marginBottom: '1.5rem',
+  outline: 'none'
+};
+
+const textareaStyle = {
+  ...inputStyle,
+  minHeight: '100px',
+  resize: 'vertical'
+};
+
+const primaryButton = {
+  width: '100%',
+  padding: '0.9rem',
+  background: '#011024',
+  color: '#ffffff',
+  border: 'none',
+  borderRadius: '10px',
+  fontWeight: 600,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '0.5rem',
+  cursor: 'pointer'
+};
+
+const activityCard = {
+  padding: '1rem',
+  border: '1px solid #e8c441',
+  borderRadius: '10px',
+  marginBottom: '1rem'
+};
+
+const activityText = {
+  marginTop: '0.5rem',
+  color: '#374151'
+};
+
+const badge = {
+  background: '#e8c441',
+  color: '#011024',
+  padding: '0.3rem 0.8rem',
+  borderRadius: '999px',
+  fontWeight: 600
+};
+
+const Input = ({ label, ...props }) => (
+  <div>
+    <label style={labelStyle}>{label}</label>
+    <input {...props} style={inputStyle} />
+  </div>
+);
 
 export default ProgressTracker;

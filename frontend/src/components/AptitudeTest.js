@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 
-// 5 unique sets with 10 different questions each (no duplicates across sets)
-const testSets = [
+/* -------------------- QUESTION SETS -------------------- */
+
+ const testSets = [
   {
     id: 1,
     questions: [
@@ -86,42 +86,25 @@ const testSets = [
 ];
 
 export default function AptitudeTest() {
+
   const [currentTest, setCurrentTest] = useState(null);
-  const [shuffledQuestions, setShuffledQuestions] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(20 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [showResult, setShowResult] = useState(false);
-  const [usedSets, setUsedSets] = useState([]);
 
-  // Start a random test
   const startTest = () => {
-    let available = testSets.filter(t => !usedSets.includes(t.id));
-    if (available.length === 0) {
-      available = testSets;
-      setUsedSets([]);
-    }
-
-    const randomIndex = Math.floor(Math.random() * available.length);
-    const selected = available[randomIndex];
-
+    const selected = testSets[0];
     setCurrentTest(selected);
-    setUsedSets(prev => [...prev, selected.id]);
-
-    // Shuffle questions
-    const shuffled = [...selected.questions].sort(() => Math.random() - 0.5);
-    setShuffledQuestions(shuffled);
-
     setCurrentQuestion(0);
     setAnswers({});
     setTimeLeft(20 * 60);
     setIsRunning(true);
     setShowResult(false);
-    toast.success('Aptitude Test started! 20 minutes remaining.');
+    toast.success("Test Started! 20 minutes remaining.");
   };
 
-  // Timer
   useEffect(() => {
     let timer;
     if (isRunning && timeLeft > 0) {
@@ -138,7 +121,7 @@ export default function AptitudeTest() {
   };
 
   const nextQuestion = () => {
-    if (currentQuestion < shuffledQuestions.length - 1) {
+    if (currentQuestion < currentTest.questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     }
   };
@@ -154,18 +137,8 @@ export default function AptitudeTest() {
     setShowResult(true);
   };
 
-  const takeNextTest = () => {
-    setShowResult(false);
-    startTest();
-  };
-
-  const goBack = () => {
-    setCurrentTest(null);
-    setShowResult(false);
-  };
-
   const score = Object.keys(answers).reduce((acc, q) => {
-    return acc + (answers[q] === shuffledQuestions[q]?.correct ? 1 : 0);
+    return acc + (answers[q] === currentTest.questions[q]?.correct ? 1 : 0);
   }, 0);
 
   const formatTime = () => {
@@ -176,200 +149,156 @@ export default function AptitudeTest() {
 
   if (!currentTest) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-8 flex items-center justify-center"
-      >
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
+      <div style={{
+        minHeight: "100vh",
+        background: "#ffffff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }}>
+        <button
           onClick={startTest}
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 px-16 py-8 rounded-3xl text-3xl font-bold shadow-2xl transition-all duration-300"
+          style={{
+            background: "#011024",
+            color: "#ffffff",
+            padding: "1.5rem 3rem",
+            fontSize: "1.5rem",
+            borderRadius: "12px",
+            border: "none",
+            cursor: "pointer"
+          }}
         >
-          Start Test
-        </motion.button>
-      </motion.div>
+          Start Aptitude Test
+        </button>
+      </div>
     );
   }
 
-  const question = shuffledQuestions[currentQuestion];
+  const question = currentTest.questions[currentQuestion];
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-6"
-    >
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">{currentTest.title}</h1>
-          <div className="text-2xl font-mono font-bold bg-gray-900/50 px-6 py-3 rounded-full border border-indigo-500/50">
-            {formatTime()}
+    <div style={{ minHeight: "100vh", background: "#ffffff" }}>
+
+      {/* -------- TOP BAR -------- */}
+      <div style={{
+        width: "100%",
+        background: "#011024",
+        padding: "1rem 2rem",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
+        <button
+          onClick={() => window.location.href = "/dashboard"}
+          style={{
+            background: "#e8c441",
+            color: "#011024",
+            border: "none",
+            padding: "0.6rem 1.2rem",
+            borderRadius: "8px",
+            fontWeight: "600",
+            cursor: "pointer"
+          }}
+        >
+          ← Dashboard
+        </button>
+
+        <h2 style={{ color: "#ffffff", margin: 0 }}>
+          Aptitude Test
+        </h2>
+
+        <div style={{
+          background: "#ffffff",
+          color: "#011024",
+          padding: "0.6rem 1.2rem",
+          borderRadius: "999px",
+          border: "2px solid #e8c441",
+          fontWeight: "bold"
+        }}>
+          {formatTime()}
+        </div>
+      </div>
+
+      {/* -------- MAIN CONTENT -------- */}
+      {!showResult ? (
+        <div style={{
+          maxWidth: "800px",
+          margin: "2rem auto",
+          background: "#f8fafc",
+          padding: "2rem",
+          borderRadius: "12px",
+          boxShadow: "0 4px 15px rgba(0,0,0,0.08)"
+        }}>
+
+          <h2 style={{ color: "#011024" }}>
+            Question {currentQuestion + 1} / {currentTest.questions.length}
+          </h2>
+
+          <p style={{ fontSize: "1.2rem", marginBottom: "1.5rem" }}>
+            {question.q}
+          </p>
+
+          <div style={{ display: "grid", gap: "1rem" }}>
+            {question.options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => selectAnswer(index)}
+                style={{
+                  padding: "1rem",
+                  borderRadius: "8px",
+                  border: "2px solid #011024",
+                  background: answers[currentQuestion] === index ? "#011024" : "#ffffff",
+                  color: answers[currentQuestion] === index ? "#ffffff" : "#011024",
+                  cursor: "pointer",
+                  transition: "0.3s"
+                }}
+                onMouseEnter={(e) => {
+                  if (answers[currentQuestion] !== index) {
+                    e.target.style.background = "#e8c441";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (answers[currentQuestion] !== index) {
+                    e.target.style.background = "#ffffff";
+                  }
+                }}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+
+          <div style={{
+            marginTop: "2rem",
+            display: "flex",
+            justifyContent: "space-between"
+          }}>
+            <button onClick={prevQuestion}>Previous</button>
+            {currentQuestion === currentTest.questions.length - 1 ?
+              <button onClick={handleSubmit}>Finish</button> :
+              <button onClick={nextQuestion}>Next</button>}
           </div>
         </div>
+      ) : (
+        <div style={{ maxWidth: "800px", margin: "2rem auto" }}>
+          <h2 style={{ color: "#011024" }}>
+            Score: {score} / {currentTest.questions.length}
+          </h2>
 
-        <AnimatePresence mode="wait">
-          {!showResult ? (
-            <motion.div
-              key="quiz"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -30 }}
-              transition={{ duration: 0.5 }}
-              className="bg-gray-900/70 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-indigo-500/30"
-            >
-              {/* Progress */}
-              <div className="mb-8">
-                <div className="flex justify-between text-lg mb-3">
-                  <span>Question {currentQuestion + 1} / {shuffledQuestions.length}</span>
-                  <span>Score: {score}</span>
-                </div>
-                <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-600"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${((currentQuestion + 1) / shuffledQuestions.length) * 100}%` }}
-                    transition={{ duration: 0.6 }}
-                  />
-                </div>
-              </div>
-
-              {/* Question */}
-              <h2 className="text-2xl font-semibold mb-10 leading-relaxed">{question.q}</h2>
-
-              {/* Options */}
-              <div className="grid gap-5">
-                {question.options.map((option, index) => (
-                  <motion.button
-                    key={index}
-                    whileHover={{ scale: 1.04, boxShadow: '0 10px 25px rgba(99,102,241,0.3)' }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => {
-                      selectAnswer(index);
-                      if (currentQuestion < shuffledQuestions.length - 1) {
-                        setTimeout(nextQuestion, 400);
-                      } else {
-                        handleSubmit();
-                      }
-                    }}
-                    className={`p-6 rounded-2xl text-left text-lg font-medium transition-all duration-300 border-2 ${
-                      answers[currentQuestion] === index
-                        ? index === question.correct
-                          ? 'border-green-500 bg-green-900/30'
-                          : 'border-red-500 bg-red-900/30'
-                        : 'border-indigo-500/50 bg-indigo-900/40 hover:border-indigo-400 hover:bg-indigo-800/60'
-                    }`}
-                  >
-                    {option}
-                  </motion.button>
-                ))}
-              </div>
-
-              {/* Navigation */}
-              <div className="flex justify-between mt-12">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={prevQuestion}
-                  disabled={currentQuestion === 0}
-                  className="px-10 py-4 bg-gray-800 hover:bg-gray-700 rounded-2xl text-lg font-medium disabled:opacity-50 transition-colors"
-                >
-                  Previous
-                </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={currentQuestion === shuffledQuestions.length - 1 ? handleSubmit : nextQuestion}
-                  className="px-10 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-2xl text-lg font-medium transition-colors"
-                >
-                  {currentQuestion === shuffledQuestions.length - 1 ? 'Finish Test' : 'Next Question'}
-                </motion.button>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="result"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6 }}
-              className="bg-gray-900/70 backdrop-blur-xl rounded-3xl p-10 shadow-2xl border border-indigo-500/30 text-center"
-            >
-              <h2 className="text-5xl font-bold mb-6 text-green-400">Test Completed!</h2>
-
-              <div className="text-7xl font-extrabold mb-4">
-                {score} / {shuffledQuestions.length}
-              </div>
-
-              <div className="text-4xl font-bold mb-8 text-yellow-400">
-                {Math.round((score / shuffledQuestions.length) * 100)}%
-              </div>
-
-              <p className="text-2xl mb-12">
-                {score >= 8 ? "Brilliant! You're placement-ready!" : 
-                 score >= 6 ? "Strong performance — just a bit more practice." : 
-                 score >= 4 ? "Good effort — focus on weak topics." : 
-                 "Keep working — improvement is coming!"}
-              </p>
-
-              {/* Beautiful Solutions - each question in its own elegant card */}
-              <div className="space-y-8 text-left max-h-[70vh] overflow-y-auto pr-4">
-                <h3 className="text-3xl font-bold mb-8 text-center text-indigo-300">Detailed Solutions</h3>
-                {shuffledQuestions.map((q, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className="bg-gray-800/60 backdrop-blur-lg rounded-2xl p-8 border border-gray-700/50 shadow-lg"
-                  >
-                    <p className="text-xl font-semibold mb-4">{q.q}</p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <span className="font-medium">Your answer:</span>{' '}
-                        <span className={answers[i] === q.correct ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
-                          {answers[i] !== undefined ? q.options[answers[i]] : "Not answered"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-medium">Correct answer:</span>{' '}
-                        <span className="text-green-400 font-bold">{q.options[q.correct]}</span>
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-950/50 p-5 rounded-xl border border-gray-600/50">
-                      <p className="text-gray-200 leading-relaxed">{q.solution}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              <div className="mt-12 flex justify-center gap-8">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={goBack}
-                  className="px-12 py-5 bg-gray-700 hover:bg-gray-600 rounded-3xl text-xl font-medium transition-colors"
-                >
-                  Go Back
-                </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={takeNextTest}
-                  className="px-12 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-3xl text-xl font-medium transition-colors"
-                >
-                  Take Next Test
-                </motion.button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+          {currentTest.questions.map((q, i) => (
+            <div key={i} style={{
+              background: "#f8fafc",
+              padding: "1rem",
+              marginTop: "1rem",
+              borderRadius: "8px"
+            }}>
+              <p><strong>{q.q}</strong></p>
+              <p>Correct: {q.options[q.correct]}</p>
+              <p>Solution: {q.solution}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
