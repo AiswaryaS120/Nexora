@@ -11,8 +11,7 @@
 - **Member 1:** Akhila P S - NSS College of Engineering
 - **Member 2:** Aiswarya S - NSS College of Engineering
 
-### Hosted Project Link
-[Add your hosted project link here]
+project drive link : https://drive.google.com/drive/folders/1E0IzOtmQkocoTgO2ubNKIOdX6lTDSzx3?usp=drive_link
 
 ---
 
@@ -171,28 +170,26 @@ npm start
 ### Screenshots
 
 **Dashboard**
-![Dashboard Screenshot](screenshots/dashboard.png)
+![Dashboard Screenshot](https://drive.google.com/file/d/1TQ_y2TFxvFK3Xfggt86CBWBYV7Jo5s9n/view?usp=drive_link)
 *Main dashboard showing progress overview, daily goals, and quick action buttons*
 
 **Aptitude Test**
-![Aptitude Test Screenshot](screenshots/aptitude.png)
+![Aptitude Test Screenshot](https://drive.google.com/file/d/1pX3RFtv4dXKTQgJ74rw6w_ESO4tX4AmZ/view?usp=drive_link)
 *Timed aptitude test with real-time scoring and instant feedback*
 
 **Coding Environment**
-![Coding Environment Screenshot](screenshots/coding.png)
+![Coding Environment Screenshot](https://drive.google.com/file/d/143uPJYqkiK11rSpcu_dSQvDLcOObEPRe/view?usp=drive_link)
 *LeetCode-style coding interface with split layout and live test execution*
 
-**Confidence Analyzer**
-![Confidence Analyzer Screenshot](screenshots/confidence.png)
-*Live confidence analysis with camera feed and real-time metrics*
-
 **Mistake Book**
-![Mistake Book Screenshot](screenshots/mistakes.png)
+![Mistake Book Screenshot](https://drive.google.com/file/d/1hSHQGrBVQum61pZFhkTB-NJvF6gnqo92/view?usp=drive_link)
 *Organized mistake tracking with detailed explanations and review system*
 
 **Versant Test**
-![Versant Test Screenshot](screenshots/versant.png)
+![Versant Test Screenshot](https://drive.google.com/file/d/1jMG_NzezaiBXuJhDv74YxAkCOzNEg3Q5/view?usp=drive_link)
 *English proficiency test with speech recognition and text-to-speech*
+
+drive link : https://drive.google.com/drive/folders/1S2-UcyElMvYTqZ3iMYsuV0-WV9g7_VGw
 
 ---
 
@@ -306,13 +303,13 @@ User Login → Dashboard → Select Feature
 ## Project Demo
 
 ### Video
-[Add your demo video link here - YouTube, Google Drive, etc.]
+[https://drive.google.com/drive/folders/1E0IzOtmQkocoTgO2ubNKIOdX6lTDSzx3?usp=drive_link]
 
 *Demo showcases: Dashboard overview, taking an aptitude test, solving coding problems, confidence analysis session, and reviewing mistakes in the Mistake Book*
 
 ### Additional Demos
-- **Live Demo:** [Add hosted project link]
-- **GitHub Repository:** [Add GitHub link]
+
+- **GitHub Repository:** [https://github.com/AiswaryaS120/Nexora]
 
 ---
 
