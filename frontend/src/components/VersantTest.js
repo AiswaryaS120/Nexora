@@ -1,87 +1,81 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
-import { Mic, Volume2, Type, CheckCircle, ArrowRight, RefreshCw, Play, Square } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
+import {
+  Mic,
+  Play,
+  Square,
+  CheckCircle,
+  RefreshCw,
+  Volume2
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-export default function VersantTest() {
+function VersantTest() {
   const navigate = useNavigate();
 
   const [section, setSection] = useState(0);
   const [currentItem, setCurrentItem] = useState(0);
   const [userResponses, setUserResponses] = useState({});
-  const [scores, setScores] = useState({
-    reading: 0,
-    repeat: 0,
-    builds: 0,
-    vocab: 0,
-    completion: 0,
-    shortAnswer: 0,
-    typing: 0
-  });
   const [timer, setTimer] = useState(15 * 60);
   const [showResult, setShowResult] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasPlayedAudio, setHasPlayedAudio] = useState(false);
+  const [recordedText, setRecordedText] = useState("");
+
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
 
+  /* ---------------- SECTIONS ---------------- */
+
   const sections = [
-    { name: 'Reading Aloud', icon: Volume2, color: '#e8c441' },
-    { name: 'Repeat Sentences', icon: Mic, color: '#e8c441' },
-    { name: 'Sentence Builds', icon: CheckCircle, color: '#e8c441' },
-    { name: 'Vocabulary', icon: Type, color: '#e8c441' },
-    { name: 'Sentence Completion', icon: ArrowRight, color: '#e8c441' },
-    { name: 'Short Answer Questions', icon: Mic, color: '#e8c441' },
-    { name: 'Typing', icon: Type, color: '#e8c441' }
+    "Reading Aloud",
+    "Repeat Sentences",
+    "Sentence Builds",
+    "Vocabulary",
+    "Sentence Completion",
+    "Short Answer",
+    "Typing"
   ];
 
   const sectionData = {
     0: [
       "The sun rises in the east every morning.",
-      "Technology is changing our lives rapidly.",
-      "Consistency leads to success in any field."
+      "Technology is changing our lives rapidly."
     ],
     1: [
       "Innovation drives progress in the modern world.",
-      "Practice daily to master new skills.",
-      "HireHub prepares students for better careers."
+      "Practice daily to master new skills."
     ],
     2: [
-      { words: ["Delhi", "is", "the", "capital", "of", "India"], correct: "Delhi is the capital of India" },
-      { words: ["The", "moon", "revolves", "around", "the", "earth"], correct: "The moon revolves around the earth" }
+      {
+        words: ["Delhi", "is", "the", "capital", "of", "India"],
+        correct: "Delhi is the capital of India"
+      }
     ],
     3: [
-      { q: "Synonym of 'Vivid'", options: ["Dull", "Bright", "Boring", "Faint"], correct: 1 },
-      { q: "Antonym of 'Abundant'", options: ["Plentiful", "Scarce", "Enough", "Rich"], correct: 1 }
+      {
+        q: "Synonym of 'Vivid'",
+        options: ["Dull", "Bright", "Boring", "Faint"]
+      }
     ],
     4: [
-      { q: "The capital of France is ___.", options: ["Paris", "London", "Berlin", "Madrid"], correct: 0 },
-      { q: "Water boils at ___ degrees Celsius.", options: ["0", "50", "100", "212"], correct: 2 }
+      {
+        q: "Water boils at _ degrees Celsius.",
+        options: ["0", "50", "100", "212"]
+      }
     ],
-    5: [
-      "Describe your favorite food in 2-3 sentences.",
-      "Explain why learning English is important."
-    ],
-    6: "Type this passage accurately and quickly: Effective communication is a key skill for success in interviews and workplaces. HireHub helps you build confidence through practice."
+    5: ["Describe your favorite food in 2-3 sentences."],
+    6:
+      "Type this passage accurately: Effective communication is important for career growth."
   };
 
-  // Initialize speech recognition
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const rec = new SpeechRecognition();
-      rec.continuous = false;
-      rec.interimResults = false;
-      rec.lang = 'en-US';
-      recognitionRef.current = rec;
-    } else {
-      toast.error('Speech recognition not supported in this browser');
-    }
+  /* ---------------- TIMER ---------------- */
 
-    // Timer
+  useEffect(() => {
     const interval = setInterval(() => {
-      setTimer(prev => {
+      setTimer((prev) => {
         if (prev <= 0) {
           setShowResult(true);
           return 0;
@@ -93,337 +87,441 @@ export default function VersantTest() {
     return () => clearInterval(interval);
   }, []);
 
-  const speakText = (text) => {
-    if (synthRef.current && !isPlaying) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      utterance.volume = 1;
-      utterance.lang = 'en-US';
-      
-      utterance.onstart = () => setIsPlaying(true);
-      utterance.onend = () => setIsPlaying(false);
-      
-      synthRef.current.speak(utterance);
+  /* ---------------- SPEECH ---------------- */
+
+  useEffect(() => {
+    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.lang = "en-US";
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
     }
-  };
+  }, []);
+
+  // Reset audio state when moving to next question
+  useEffect(() => {
+    setHasPlayedAudio(false);
+    setRecordedText("");
+  }, [section, currentItem]);
 
   const startRecording = () => {
-    const recognition = recognitionRef.current;
-    if (recognition && !isRecording) {
-      setIsRecording(true);
-      recognition.start();
-      
-      recognition.onresult = (e) => {
-        const transcript = e.results[0][0].transcript.trim();
-        setUserResponses(prev => ({ ...prev, [`${section}-${currentItem}`]: transcript }));
-        setIsRecording(false);
-        toast.success('✓ Response captured!');
-      };
-      
-      recognition.onerror = () => {
-        setIsRecording(false);
-        toast.error('Recording failed. Please try again.');
-      };
-      
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
+    const rec = recognitionRef.current;
+    if (!rec) {
+      toast.error("Speech recognition not supported");
+      return;
     }
+
+    setIsRecording(true);
+    setRecordedText("");
+    
+    try {
+      rec.start();
+    } catch (error) {
+      console.error("Recording error:", error);
+      setIsRecording(false);
+    }
+
+    rec.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setRecordedText(transcript);
+      setUserResponses((prev) => ({
+        ...prev,
+        [`${section}-${currentItem}`]: transcript
+      }));
+      setIsRecording(false);
+    };
+
+    rec.onerror = (e) => {
+      console.error("Speech recognition error:", e);
+      setIsRecording(false);
+      toast.error("Recording failed. Please try again.");
+    };
+
+    rec.onend = () => setIsRecording(false);
   };
 
   const stopRecording = () => {
-    if (recognitionRef.current && isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-    }
+    recognitionRef.current?.stop();
+    setIsRecording(false);
   };
 
-  const handleInputChange = (e) => {
-    setUserResponses(prev => ({ ...prev, [`${section}-${currentItem}`]: e.target.value }));
-  };
-
-  const handleOptionSelect = (optionIndex) => {
-    setUserResponses(prev => ({ ...prev, [`${section}-${currentItem}`]: optionIndex }));
-  };
-
-  const submitSection = () => {
-    const key = `${section}-${currentItem}`;
-    const response = userResponses[key];
-    const currentData = Array.isArray(sectionData[section]) ? sectionData[section][currentItem] : sectionData[section];
+  const speakText = (text) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
     
-    let points = 0;
-    if (typeof response === 'string' && response.trim()) {
-      points = 5;
-    } else if (typeof response === 'number') {
-      if (section === 3 || section === 4) {
-        points = response === currentData.correct ? 10 : 0;
-      }
-    }
-
-    const scoreKeys = ['reading', 'repeat', 'builds', 'vocab', 'completion', 'shortAnswer', 'typing'];
-    setScores(prev => ({ ...prev, [scoreKeys[section]]: prev[scoreKeys[section]] + points }));
-
-    const maxItems = Array.isArray(sectionData[section]) ? sectionData[section].length : 1;
+    utterance.onstart = () => {
+      setIsPlaying(true);
+      setHasPlayedAudio(true);
+    };
     
+    utterance.onend = () => {
+      setIsPlaying(false);
+    };
+    
+    synthRef.current.cancel(); // Cancel any ongoing speech
+    synthRef.current.speak(utterance);
+  };
+
+  /* ---------------- NAVIGATION ---------------- */
+
+  const handleNext = () => {
+    const maxItems = Array.isArray(sectionData[section])
+      ? sectionData[section].length
+      : 1;
+
     if (currentItem < maxItems - 1) {
       setCurrentItem(currentItem + 1);
+    } else if (section < sections.length - 1) {
+      setSection(section + 1);
+      setCurrentItem(0);
     } else {
-      if (section < sections.length - 1) {
-        setSection(section + 1);
-        setCurrentItem(0);
-      } else {
-        setShowResult(true);
-      }
+      setShowResult(true);
     }
-  };
-
-  const calculateTotalScore = () => {
-    return Object.values(scores).reduce((a, b) => a + b, 0);
-  };
-
-  const getTips = () => {
-    const total = calculateTotalScore();
-    if (total >= 55) return "Outstanding performance! You're ready for real Versant interviews.";
-    if (total >= 40) return "Strong showing. Work on fluency and vocabulary for better scores.";
-    if (total >= 25) return "Good effort. Practice speaking daily and focus on clear pronunciation.";
-    return "Keep practicing — record yourself and compare with native speakers.";
   };
 
   const formatTime = () => {
     const min = Math.floor(timer / 60);
     const sec = timer % 60;
-    return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+    return `${min}:${sec < 10 ? "0" : ""}${sec}`;
   };
 
-  const getCurrentContent = () => {
-    const data = sectionData[section];
-    if (Array.isArray(data)) return data[currentItem];
-    return data;
-  };
+  const currentContent = Array.isArray(sectionData[section])
+    ? sectionData[section][currentItem]
+    : sectionData[section];
 
-  const currentContent = getCurrentContent();
+  /* ---------------- UI ---------------- */
 
   return (
-    <div style={{ background: '#ffffff', minHeight: '100vh' }}>
-      {/* Consistent blue top bar */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '70px',
-        background: '#011024',
-        color: '#e8c441',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 1.5rem',
-        zIndex: 1000,
-        boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
-        fontWeight: 600,
-        fontSize: '1.15rem'
-      }}>
+    <div style={{ background: "#ffffff", minHeight: "100vh" }}>
+      {/* Top Bar */}
+      <div
+        style={{
+          background: "#011024",
+          color: "#ffffff",
+          padding: "1.2rem 2rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+        }}
+      >
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate("/dashboard")}
           style={{
-            background: 'none',
-            border: 'none',
-            color: '#e8c441',
-            fontSize: '1.15rem',
+            background: "none",
+            border: "1px solid #ffffff",
+            color: "#ffffff",
             fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.8rem'
+            cursor: "pointer",
+            padding: "0.5rem 1rem",
+            borderRadius: "6px",
+            fontSize: "0.95rem"
           }}
         >
-          ← Back to Dashboard
+          ← Exit Test
         </button>
+
+        <div style={{ 
+          fontSize: "1.4rem", 
+          fontWeight: 700,
+          letterSpacing: "0.5px"
+        }}>
+          {formatTime()}
+        </div>
       </div>
 
-      {/* Spacer */}
-      <div style={{ height: '70px' }} />
+      {/* Progress Bar */}
+      <div style={{ 
+        background: "#f5f5f5", 
+        height: "8px",
+        position: "relative"
+      }}>
+        <div style={{
+          background: "#FDB913",
+          height: "100%",
+          width: `${((section + 1) / sections.length) * 100}%`,
+          transition: "width 0.3s ease"
+        }} />
+      </div>
 
-      <div style={{ padding: '2rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
-        <h1 style={{
-          color: '#011024',
-          fontSize: '2.5rem',
-          fontWeight: 700,
-          textAlign: 'center',
-          marginBottom: '1rem'
-        }}>
-          Versant English Proficiency Test
-        </h1>
-
-        <p style={{
-          textAlign: 'center',
-          color: '#6b7280',
-          marginBottom: '2rem'
-        }}>
-          15 minutes • 7 sections • AI-scored simulation
-        </p>
-
-        {/* Timer */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            display: 'inline-block',
-            background: '#011024',
-            color: '#e8c441',
-            padding: '1rem 2rem',
-            borderRadius: '12px',
-            fontSize: '2rem',
-            fontWeight: 700,
-            boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
-          }}>
-            {formatTime()}
-          </div>
-        </div>
-
+      <div style={{ padding: "3rem 2rem", maxWidth: "850px", margin: "auto" }}>
         <AnimatePresence mode="wait">
           {!showResult ? (
             <motion.div
-              key="test"
+              key={`${section}-${currentItem}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              style={{
-                background: 'white',
-                borderRadius: '12px',
-                padding: '2rem',
-                boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
-                border: '1px solid #e8c441'
-              }}
+              transition={{ duration: 0.3 }}
             >
-              {/* Section Header */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '2rem'
-              }}>
-                <h2 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1rem',
-                  color: '#011024',
-                  fontSize: '1.8rem',
+              <div
+                style={{
+                  background: "#ffffff",
+                  padding: "3rem",
+                  borderRadius: "12px",
+                  border: "1px solid #e0e0e0",
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.08)"
+                }}
+              >
+                {/* Section Title */}
+                <div style={{
+                  background: "#011024",
+                  color: "#ffffff",
+                  padding: "1rem 1.5rem",
+                  borderRadius: "8px",
+                  marginBottom: "2rem",
+                  display: "inline-block",
                   fontWeight: 600,
-                  margin: 0
+                  fontSize: "1.1rem"
                 }}>
-                  {React.createElement(sections[section].icon, { size: 32, color: '#e8c441' })}
-                  {sections[section].name}
-                </h2>
-
-                <span style={{ color: '#6b7280', fontSize: '1.1rem' }}>
-                  Question {currentItem + 1} of{' '}
-                  {Array.isArray(sectionData[section]) ? sectionData[section].length : 1}
-                </span>
-              </div>
-
-              {/* Reading Aloud */}
-              {section === 0 && (
-                <div>
-                  <p style={{ color: '#4b5563', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                    Read this sentence aloud clearly:
-                  </p>
-                  <div style={{
-                    background: '#f8fafc',
-                    padding: '2rem',
-                    borderRadius: '12px',
-                    textAlign: 'center',
-                    fontSize: '1.4rem',
-                    fontWeight: 500,
-                    color: '#011024',
-                    marginBottom: '2rem'
-                  }}>
-                    {currentContent}
-                  </div>
+                  Section {section + 1}: {sections[section]}
                 </div>
-              )}
 
-              {/* Repeat Sentences */}
-              {section === 1 && (
-                <div>
-                  <p style={{ color: '#4b5563', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                    Listen carefully and repeat the sentence exactly:
-                  </p>
-                  <div style={{
-                    background: '#f8fafc',
-                    padding: '2rem',
-                    borderRadius: '12px',
-                    marginBottom: '2rem'
-                  }}>
-                    <div style={{ textAlign: 'center' }}>
+                {/* Question Number */}
+                <div style={{
+                  color: "#666",
+                  fontSize: "0.95rem",
+                  marginBottom: "1.5rem",
+                  fontWeight: 500
+                }}>
+                  Question {currentItem + 1} of {Array.isArray(sectionData[section]) ? sectionData[section].length : 1}
+                </div>
+
+                {/* SECTION 0: Reading Aloud - Show text immediately */}
+                {section === 0 && (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "1.4rem",
+                        marginBottom: "2.5rem",
+                        color: "#1a1a1a",
+                        lineHeight: "1.8",
+                        padding: "1.5rem",
+                        background: "#f9f9f9",
+                        borderLeft: "4px solid #011024",
+                        borderRadius: "6px"
+                      }}
+                    >
+                      {currentContent}
+                    </div>
+
+                    <div style={{ marginTop: "2rem" }}>
+                      <p style={{ 
+                        color: "#666", 
+                        marginBottom: "1rem",
+                        fontSize: "0.95rem"
+                      }}>
+                        Click the button below and read the text aloud:
+                      </p>
                       <button
-                        onClick={() => speakText(currentContent)}
-                        disabled={isPlaying}
+                        onClick={isRecording ? stopRecording : startRecording}
                         style={{
-                          padding: '1rem 2rem',
-                          background: '#011024',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '12px',
+                          padding: "1rem 2.5rem",
+                          background: isRecording ? "#dc2626" : "#FDB913",
+                          color: isRecording ? "#ffffff" : "#1a1a1a",
+                          border: "none",
+                          borderRadius: "8px",
                           fontWeight: 600,
-                          cursor: isPlaying ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.8rem',
-                          margin: '0 auto 1.5rem'
+                          cursor: "pointer",
+                          fontSize: "1rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                          transition: "all 0.2s"
                         }}
                       >
-                        {isPlaying ? <Square size={20} /> : <Play size={20} />}
-                        {isPlaying ? 'Playing...' : 'Play Audio'}
+                        <Mic size={20} />
+                        {isRecording ? "Recording..." : "Start Recording"}
                       </button>
 
-                      {userResponses[`${section}-${currentItem}`] && (
+                      {recordedText && (
                         <div style={{
-                          marginTop: '1.5rem',
-                          padding: '1rem',
-                          background: '#f1f5f9',
-                          borderRadius: '8px',
-                          border: '1px solid #e8c441'
+                          marginTop: "1.5rem",
+                          padding: "1rem",
+                          background: "#e8f5e9",
+                          borderRadius: "6px",
+                          border: "1px solid #4caf50"
                         }}>
-                          <p style={{ color: '#6b7280', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
-                            Your response:
-                          </p>
-                          <p style={{ color: '#011024', fontWeight: 500 }}>
-                            {userResponses[`${section}-${currentItem}`]}
-                          </p>
+                          <div style={{ 
+                            fontSize: "0.85rem", 
+                            color: "#2e7d32",
+                            fontWeight: 600,
+                            marginBottom: "0.5rem"
+                          }}>
+                            Your Recording:
+                          </div>
+                          <div style={{ color: "#1a1a1a" }}>
+                            {recordedText}
+                          </div>
                         </div>
                       )}
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Sentence Builds */}
-              {section === 2 && (
-                <div>
-                  <p style={{ color: '#4b5563', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                    Arrange these words to form a correct sentence:
-                  </p>
-                  <div style={{
-                    background: '#f8fafc',
-                    padding: '2rem',
-                    borderRadius: '12px',
-                    marginBottom: '1.5rem'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '0.8rem',
-                      justifyContent: 'center',
-                      marginBottom: '1.5rem'
-                    }}>
-                      {currentContent.words.map((word, i) => (
-                        <span key={i} style={{
-                          padding: '0.75rem 1.25rem',
-                          background: '#011024',
-                          color: 'white',
-                          borderRadius: '8px',
+                {/* SECTION 1: Repeat Sentences - Audio first, then recording */}
+                {section === 1 && (
+                  <div>
+                    {!hasPlayedAudio ? (
+                      <div style={{ textAlign: "center", padding: "3rem 0" }}>
+                        <div style={{
+                          fontSize: "1.2rem",
+                          color: "#666",
+                          marginBottom: "2rem"
+                        }}>
+                          Click the button below to listen to the sentence
+                        </div>
+                        <button
+                          onClick={() => speakText(currentContent)}
+                          disabled={isPlaying}
+                          style={{
+                            padding: "1.2rem 3rem",
+                            background: "#011024",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: "8px",
+                            fontWeight: 600,
+                            cursor: isPlaying ? "not-allowed" : "pointer",
+                            fontSize: "1.1rem",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.75rem",
+                            boxShadow: "0 4px 12px rgba(0,82,165,0.3)",
+                            opacity: isPlaying ? 0.7 : 1,
+                            transition: "all 0.2s"
+                          }}
+                        >
+                          {isPlaying ? (
+                            <>
+                              <Volume2 size={24} />
+                              Playing...
+                            </>
+                          ) : (
+                            <>
+                              <Play size={24} />
+                              Play Audio
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{
+                          padding: "1.5rem",
+                          background: "#e3f2fd",
+                          borderRadius: "6px",
+                          marginBottom: "2rem",
+                          textAlign: "center",
+                          color: "#011024",
                           fontWeight: 500
                         }}>
+                          Now repeat what you heard
+                        </div>
+
+                        <div style={{ textAlign: "center" }}>
+                          <button
+                            onClick={() => speakText(currentContent)}
+                            disabled={isPlaying}
+                            style={{
+                              padding: "0.7rem 1.5rem",
+                              background: "#ffffff",
+                              color: "#011024",
+                              border: "2px solid #011024",
+                              borderRadius: "6px",
+                              fontWeight: 600,
+                              cursor: isPlaying ? "not-allowed" : "pointer",
+                              marginRight: "1rem",
+                              marginBottom: "1.5rem",
+                              fontSize: "0.9rem",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.5rem"
+                            }}
+                          >
+                            <Volume2 size={18} />
+                            {isPlaying ? "Playing..." : "Replay"}
+                          </button>
+
+                          <button
+                            onClick={isRecording ? stopRecording : startRecording}
+                            style={{
+                              padding: "1rem 2.5rem",
+                              background: isRecording ? "#dc2626" : "#FDB913",
+                              color: isRecording ? "#ffffff" : "#1a1a1a",
+                              border: "none",
+                              borderRadius: "8px",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              fontSize: "1rem",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                            }}
+                          >
+                            <Mic size={20} />
+                            {isRecording ? "Recording..." : "Start Recording"}
+                          </button>
+                        </div>
+
+                        {recordedText && (
+                          <div style={{
+                            marginTop: "2rem",
+                            padding: "1rem",
+                            background: "#e8f5e9",
+                            borderRadius: "6px",
+                            border: "1px solid #4caf50"
+                          }}>
+                            <div style={{ 
+                              fontSize: "0.85rem", 
+                              color: "#2e7d32",
+                              fontWeight: 600,
+                              marginBottom: "0.5rem"
+                            }}>
+                              Your Recording:
+                            </div>
+                            <div style={{ color: "#1a1a1a" }}>
+                              {recordedText}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SECTION 2: Sentence Builds */}
+                {section === 2 && (
+                  <>
+                    <div style={{
+                      fontSize: "1.1rem",
+                      color: "#666",
+                      marginBottom: "1.5rem"
+                    }}>
+                      Arrange the words to form a correct sentence:
+                    </div>
+                    <div style={{ marginBottom: "2rem" }}>
+                      {currentContent.words.map((word, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            background: "#011024",
+                            color: "white",
+                            padding: "0.7rem 1.2rem",
+                            marginRight: "0.6rem",
+                            marginBottom: "0.6rem",
+                            borderRadius: "6px",
+                            display: "inline-block",
+                            fontSize: "1rem",
+                            fontWeight: 500,
+                            boxShadow: "0 2px 6px rgba(0,82,165,0.2)"
+                          }}
+                        >
                           {word}
                         </span>
                       ))}
@@ -431,329 +529,263 @@ export default function VersantTest() {
 
                     <input
                       type="text"
-                      value={userResponses[`${section}-${currentItem}`] || ''}
-                      onChange={handleInputChange}
                       placeholder="Type the correct sentence here..."
                       style={{
-                        width: '100%',
-                        padding: '1rem',
-                        background: 'white',
-                        border: '2px solid #e8c441',
-                        borderRadius: '8px',
-                        fontSize: '1.1rem',
-                        color: '#011024'
+                        width: "100%",
+                        padding: "1rem 1.2rem",
+                        border: "2px solid #e0e0e0",
+                        borderRadius: "8px",
+                        fontSize: "1rem",
+                        outline: "none",
+                        transition: "border-color 0.2s"
                       }}
+                      onFocus={(e) => e.target.style.borderColor = "#011024"}
+                      onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
                     />
-                  </div>
-                </div>
-              )}
+                  </>
+                )}
 
-              {/* Vocab & Sentence Completion */}
-              {(section === 3 || section === 4) && (
-                <div>
-                  <p style={{ color: '#4b5563', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                    Select the correct answer:
-                  </p>
-                  <div style={{
-                    background: '#f8fafc',
-                    padding: '2rem',
-                    borderRadius: '12px',
-                    marginBottom: '2rem'
-                  }}>
-                    <p style={{
-                      fontSize: '1.4rem',
-                      fontWeight: 600,
-                      color: '#011024',
-                      textAlign: 'center',
-                      marginBottom: '2rem'
-                    }}>
+                {/* SECTION 3 & 4: MCQ */}
+                {(section === 3 || section === 4) && (
+                  <>
+                    <div
+                      style={{
+                        fontSize: "1.3rem",
+                        marginBottom: "2rem",
+                        color: "#1a1a1a",
+                        fontWeight: 500
+                      }}
+                    >
                       {currentContent.q}
-                    </p>
-
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr',
-                      gap: '1rem'
-                    }}>
-                      {currentContent.options.map((option, index) => (
-                        <button
-                          key={index}
-                          onClick={() => handleOptionSelect(index)}
-                          style={{
-                            padding: '1rem',
-                            background: userResponses[`${section}-${currentItem}`] === index
-                              ? '#e8c441'
-                              : '#f1f5f9',
-                            color: userResponses[`${section}-${currentItem}`] === index
-                              ? '#011024'
-                              : '#374151',
-                            border: '2px solid #e8c441',
-                            borderRadius: '8px',
-                            fontSize: '1.1rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          {option}
-                        </button>
-                      ))}
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Short Answer */}
-              {section === 5 && (
-                <div>
-                  <p style={{ color: '#4b5563', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                    Listen to the question and answer by speaking:
-                  </p>
-                  <div style={{
-                    background: '#f8fafc',
-                    padding: '2rem',
-                    borderRadius: '12px',
-                    marginBottom: '2rem'
-                  }}>
-                    <div style={{ textAlign: 'center' }}>
+                    
+                    {currentContent.options.map((opt, i) => (
                       <button
-                        onClick={() => speakText(currentContent)}
-                        disabled={isPlaying}
+                        key={i}
                         style={{
-                          padding: '1rem 2rem',
-                          background: '#011024',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '12px',
-                          fontWeight: 600,
-                          cursor: isPlaying ? 'not-allowed' : 'pointer',
-                          marginBottom: '1.5rem'
+                          display: "block",
+                          width: "100%",
+                          padding: "1.1rem 1.5rem",
+                          marginBottom: "1rem",
+                          background: "#ffffff",
+                          border: "2px solid #e0e0e0",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontSize: "1rem",
+                          textAlign: "left",
+                          transition: "all 0.2s",
+                          fontWeight: 500
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.borderColor = "#011024";
+                          e.target.style.background = "#f5f9ff";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.borderColor = "#e0e0e0";
+                          e.target.style.background = "#ffffff";
                         }}
                       >
-                        {isPlaying ? <Square size={20} /> : <Play size={20} />}
-                        {isPlaying ? 'Playing...' : 'Hear Question'}
+                        {String.fromCharCode(65 + i)}. {opt}
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {/* SECTION 5: Short Answer - Audio prompt with recording */}
+                {section === 5 && (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "1.3rem",
+                        marginBottom: "2rem",
+                        color: "#1a1a1a",
+                        padding: "1.5rem",
+                        background: "#f9f9f9",
+                        borderLeft: "4px solid #011024",
+                        borderRadius: "6px",
+                        lineHeight: "1.6"
+                      }}
+                    >
+                      {currentContent}
+                    </div>
+
+                    <div style={{ marginTop: "2rem" }}>
+                      <p style={{ 
+                        color: "#666", 
+                        marginBottom: "1rem",
+                        fontSize: "0.95rem"
+                      }}>
+                        Record your answer (2-3 sentences):
+                      </p>
+                      <button
+                        onClick={isRecording ? stopRecording : startRecording}
+                        style={{
+                          padding: "1rem 2.5rem",
+                          background: isRecording ? "#dc2626" : "#FDB913",
+                          color: isRecording ? "#ffffff" : "#1a1a1a",
+                          border: "none",
+                          borderRadius: "8px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          fontSize: "1rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                        }}
+                      >
+                        <Mic size={20} />
+                        {isRecording ? "Recording..." : "Start Recording"}
                       </button>
 
-                      {userResponses[`${section}-${currentItem}`] && (
+                      {recordedText && (
                         <div style={{
-                          padding: '1rem',
-                          background: '#f1f5f9',
-                          borderRadius: '8px',
-                          border: '1px solid #e8c441'
+                          marginTop: "1.5rem",
+                          padding: "1rem",
+                          background: "#e8f5e9",
+                          borderRadius: "6px",
+                          border: "1px solid #4caf50"
                         }}>
-                          <p style={{ color: '#6b7280', marginBottom: '0.5rem' }}>Your answer:</p>
-                          <p style={{ color: '#011024', fontWeight: 500 }}>
-                            {userResponses[`${section}-${currentItem}`]}
-                          </p>
+                          <div style={{ 
+                            fontSize: "0.85rem", 
+                            color: "#2e7d32",
+                            fontWeight: 600,
+                            marginBottom: "0.5rem"
+                          }}>
+                            Your Recording:
+                          </div>
+                          <div style={{ color: "#1a1a1a" }}>
+                            {recordedText}
+                          </div>
                         </div>
                       )}
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* Typing */}
-              {section === 6 && (
-                <div>
-                  <p style={{ color: '#4b5563', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                    Type this passage accurately:
-                  </p>
-                  <div style={{
-                    background: '#f8fafc',
-                    padding: '2rem',
-                    borderRadius: '12px',
-                    marginBottom: '1.5rem'
-                  }}>
-                    <p style={{ fontSize: '1.2rem', color: '#011024', lineHeight: 1.6 }}>
-                      {currentContent}
-                    </p>
-                  </div>
-
-                  <textarea
-                    value={userResponses[`${section}-${currentItem}`] || ''}
-                    onChange={handleInputChange}
-                    rows="5"
-                    placeholder="Start typing here..."
-                    style={{
-                      width: '100%',
-                      padding: '1rem',
-                      background: 'white',
-                      border: '2px solid #e8c441',
-                      borderRadius: '8px',
-                      fontSize: '1.1rem',
-                      color: '#011024',
-                      resize: 'vertical'
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                justifyContent: 'center',
-                gap: '1.5rem',
-                marginTop: '2.5rem'
-              }}>
-                {(section === 0 || section === 1 || section === 5) && (
-                  <button
-                    onClick={isRecording ? stopRecording : startRecording}
-                    style={{
-                      padding: '1rem 2rem',
-                      background: isRecording ? '#dc2626' : '#011024',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.8rem',
-                      transition: 'background 0.2s'
-                    }}
-                  >
-                    <Mic size={20} />
-                    {isRecording ? 'Stop Recording' : 'Start Speaking'}
-                  </button>
                 )}
 
-                <button
-                  onClick={submitSection}
-                  style={{
-                    padding: '1rem 2.5rem',
-                    background: '#011024',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.8rem'
-                  }}
-                >
-                  <CheckCircle size={20} />
-                  {currentItem < (Array.isArray(sectionData[section]) ? sectionData[section].length : 1) - 1
-                    ? 'Next Question'
-                    : section < sections.length - 1
-                    ? 'Next Section'
-                    : 'Finish Test'}
-                </button>
-              </div>
+                {/* SECTION 6: Typing */}
+                {section === 6 && (
+                  <>
+                    <div
+                      style={{
+                        fontSize: "1.1rem",
+                        marginBottom: "1.5rem",
+                        color: "#666"
+                      }}
+                    >
+                      Type the following passage accurately:
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "1.2rem",
+                        marginBottom: "2rem",
+                        color: "#1a1a1a",
+                        padding: "1.5rem",
+                        background: "#f9f9f9",
+                        borderRadius: "6px",
+                        lineHeight: "1.8"
+                      }}
+                    >
+                      {currentContent.replace("Type this passage accurately: ", "")}
+                    </div>
+                    <textarea
+                      rows="6"
+                      placeholder="Start typing here..."
+                      style={{
+                        width: "100%",
+                        padding: "1rem 1.2rem",
+                        border: "2px solid #e0e0e0",
+                        borderRadius: "8px",
+                        fontSize: "1rem",
+                        fontFamily: "inherit",
+                        outline: "none",
+                        resize: "vertical",
+                        lineHeight: "1.6"
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "#0052A5"}
+                      onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
+                    />
+                  </>
+                )}
 
-              {/* Progress */}
-              <div style={{ marginTop: '3rem' }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: '0.75rem',
-                  color: '#6b7280'
-                }}>
-                  <span>Section {section + 1} of {sections.length}</span>
-                  <span>
-                    {Math.round(((section + currentItem / 10) / sections.length) * 100)}% Complete
-                  </span>
-                </div>
-                <div style={{
-                  height: '10px',
-                  background: '#e5e7eb',
-                  borderRadius: '999px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${((section + currentItem / 10) / sections.length) * 100}%`,
-                    background: '#e8c441',
-                    transition: 'width 0.4s ease'
-                  }} />
+                {/* NEXT BUTTON */}
+                <div style={{ marginTop: "3rem", textAlign: "right" }}>
+                  <button
+                    onClick={handleNext}
+                    style={{
+                      padding: "1rem 3rem",
+                      background: "#FDB913",
+                      color: "#1a1a1a",
+                      border: "none",
+                      borderRadius: "8px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontSize: "1.05rem",
+                      boxShadow: "0 4px 12px rgba(253,185,19,0.3)",
+                      transition: "all 0.2s"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = "translateY(-2px)";
+                      e.target.style.boxShadow = "0 6px 16px rgba(253,185,19,0.4)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = "translateY(0)";
+                      e.target.style.boxShadow = "0 4px 12px rgba(253,185,19,0.3)";
+                    }}
+                  >
+                    Next →
+                  </button>
                 </div>
               </div>
             </motion.div>
           ) : (
             <motion.div
               key="result"
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              style={{
-                background: 'white',
-                borderRadius: '12px',
-                padding: '3rem 2rem',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                border: '1px solid #e8c441',
-                textAlign: 'center'
-              }}
+              style={{ textAlign: "center", padding: "4rem 2rem" }}
             >
-              <h2 style={{
-                color: '#011024',
-                fontSize: '3rem',
-                fontWeight: 700,
-                marginBottom: '1.5rem'
-              }}>
-                Test Completed!
-              </h2>
-
               <div style={{
-                fontSize: '4.5rem',
-                fontWeight: 800,
-                color: '#011024',
-                marginBottom: '1rem'
+                background: "#ffffff",
+                padding: "3rem",
+                borderRadius: "12px",
+                border: "1px solid #e0e0e0",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+                maxWidth: "500px",
+                margin: "auto"
               }}>
-                {calculateTotalScore()} / 70
+                <CheckCircle size={64} color="#4caf50" style={{ marginBottom: "1.5rem" }} />
+                <h2 style={{ 
+                  color: "#1a1a1a",
+                  marginBottom: "1rem",
+                  fontSize: "2rem"
+                }}>
+                  Test Completed!
+                </h2>
+                <p style={{ color: "#666", marginBottom: "2rem" }}>
+                  Your responses have been recorded successfully.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  style={{
+                    marginTop: "1rem",
+                    padding: "1rem 2.5rem",
+                    background: "#011024",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontSize: "1rem",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    boxShadow: "#011024"
+                  }}
+                >
+                  <RefreshCw size={20} /> Restart Test
+                </button>
               </div>
-
-              <div style={{
-                fontSize: '2.5rem',
-                fontWeight: 700,
-                color: '#e8c441',
-                marginBottom: '2rem'
-              }}>
-                {Math.round((calculateTotalScore() / 70) * 100)}%
-              </div>
-
-              <p style={{
-                color: '#4b5563',
-                fontSize: '1.3rem',
-                marginBottom: '2.5rem',
-                lineHeight: 1.5
-              }}>
-                {getTips()}
-              </p>
-
-              <button
-                onClick={() => {
-                  setSection(0);
-                  setCurrentItem(0);
-                  setTimer(15 * 60);
-                  setShowResult(false);
-                  setUserResponses({});
-                  setScores({
-                    reading: 0,
-                    repeat: 0,
-                    builds: 0,
-                    vocab: 0,
-                    completion: 0,
-                    shortAnswer: 0,
-                    typing: 0
-                  });
-                }}
-                style={{
-                  padding: '1.2rem 3rem',
-                  background: '#011024',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '1.3rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.8rem'
-                }}
-              >
-                <RefreshCw size={24} />
-                Restart Test
-              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -761,3 +793,5 @@ export default function VersantTest() {
     </div>
   );
 }
+
+export default VersantTest;

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   BrowserRouter as Router, 
   Routes, 
   Route, 
-  Navigate, 
-  useNavigate
+  Navigate
 } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
@@ -17,30 +16,22 @@ import Auth from './components/Auth';
 import CodingEnvironment from './components/CodingEnvironment';
 import AptitudeTest from './components/AptitudeTest';
 import VersantTest from './components/VersantTest';
+import CodeTest from './components/CodeTest';
+import MistakeBook from './components/MistakeBook';
+import StudyMaterials from './components/StudyMaterials';
 
 import './App.css';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+function RoutesWrapper() {
+    const { isLoggedIn } = useAuth();
 
-  useEffect(() => {
-    const handleStorageChange = () => {
-      setIsLoggedIn(!!localStorage.getItem('token'));
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  return (
-    <Router>
-      <Toaster position="top-right" />
+    return (
       <Routes>
         {/* Login */}
-        <Route 
-          path="/login" 
-          element={
-            isLoggedIn ? <Navigate to="/dashboard" replace /> : <Auth onLogin={() => setIsLoggedIn(true)} />
-          } 
+        <Route
+          path="/login"
+          element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Auth />}
         />
 
         {/* All protected pages – no navbar, just content */}
@@ -52,6 +43,9 @@ function App() {
         <Route path="/coding" element={isLoggedIn ? <CodingEnvironment /> : <Navigate to="/login" replace />} />
         <Route path="/aptitude" element={isLoggedIn ? <AptitudeTest /> : <Navigate to="/login" replace />} />
         <Route path="/versant" element={isLoggedIn ? <VersantTest /> : <Navigate to="/login" replace />} />
+        <Route path="/code" element={isLoggedIn ? <CodeTest /> : <Navigate to="/login" replace />} />
+        <Route path="/mistakebook" element={isLoggedIn ? <MistakeBook /> : <Navigate to="/login" replace />} />
+        <Route path="/study-materials" element={isLoggedIn ? <StudyMaterials /> : <Navigate to="/login" replace />} />
 
         {/* Root redirect */}
         <Route path="/" element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} replace />} />
@@ -59,8 +53,18 @@ function App() {
         {/* Catch-all */}
         <Route path="*" element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} replace />} />
       </Routes>
-    </Router>
-  );
-}
+    );
+  }
 
+  function App() {
+    return (
+      <AuthProvider>
+        <Router>
+          <Toaster position="top-right" />
+          <RoutesWrapper />
+        </Router>
+      </AuthProvider>
+    );
+  }
+ 
 export default App;

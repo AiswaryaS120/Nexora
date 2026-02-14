@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; 
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -9,9 +9,11 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 function Dashboard() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [stats, setStats] = useState({
     totalProblems: 0,
     aptitudeScore: 0,
@@ -34,7 +36,6 @@ function Dashboard() {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
 
-      // If we don't have a token or userId, send the user to login instead of calling the API
       if (!token || !userId) {
         navigate('/login', { replace: true });
         return;
@@ -86,7 +87,7 @@ function Dashboard() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [navigate]);
 
   const calculateStreak = (progress) => {
     if (progress.length === 0) return 0;
@@ -189,21 +190,39 @@ function Dashboard() {
                 <TrendingUp size={22} /> Dashboard
               </button>
             </li>
+            
+
+            
             <li style={{ margin: '1rem 0' }}>
-              <button onClick={() => { navigate('/track-progress'); setMenuOpen(false); }} style={menuItemStyle}>
-                <Target size={22} /> Track Progress
+              <button onClick={() => { navigate('/mistakebook'); setMenuOpen(false); }} style={menuItemStyle}>
+                <Target size={22} /> MistakeBook
               </button>
             </li>
+
             <li style={{ margin: '1rem 0' }}>
-              <button onClick={() => { navigate('/resume-ai'); setMenuOpen(false); }} style={menuItemStyle}>
+              <button onClick={() => { navigate('/progress'); setMenuOpen(false); }} style={menuItemStyle}>
+                <Target size={22} /> ProgressTracker
+              </button>
+            </li>
+
+            <li style={{ margin: '1rem 0' }}>
+              <button onClick={() => { navigate('/resume'); setMenuOpen(false); }} style={menuItemStyle}>
                 <FileText size={22} /> Resume AI
               </button>
             </li>
+
             <li style={{ margin: '1rem 0' }}>
               <button onClick={() => { navigate('/mock-interview'); setMenuOpen(false); }} style={menuItemStyle}>
                 <MessageSquare size={22} /> Mock Interviews
               </button>
             </li>
+
+            <li style={{ margin: '1rem 0' }}>
+              <button onClick={() => { navigate('/study-materials'); setMenuOpen(false); }} style={menuItemStyle}>
+                <FileText size={22} /> Study Materials
+              </button>
+            </li>
+
             <li style={{ margin: '1rem 0' }}>
               <button onClick={() => { navigate('/notifications'); setMenuOpen(false); }} style={menuItemStyle}>
                 <Bell size={22} /> Notifications
@@ -212,8 +231,7 @@ function Dashboard() {
             <li style={{ marginTop: '2.5rem' }}>
               <button
                 onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('userId');
+                  logout();
                   setMenuOpen(false);
                   navigate('/login', { replace: true });
                 }}
@@ -449,7 +467,7 @@ function Dashboard() {
                       Take Aptitude Test
                     </button>
 
-                    {/* New Versant Test button - placed right below Aptitude Test */}
+                    {/* Versant Test button – placed below Aptitude Test */}
                     <button
                       onClick={() => navigate('/versant')}
                       style={{
@@ -464,6 +482,23 @@ function Dashboard() {
                     >
                       Take Versant Test
                     </button>
+
+                     {/* code Test button – placed below versant Test */}
+                    <button
+                      onClick={() => navigate('/code')}
+                      style={{
+                        background: '#011024',
+                        color: 'white',
+                        border: 'none',
+                        padding: '1rem',
+                        borderRadius: '8px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Take coding Test
+                    </button>
+
 
                     <button
                       onClick={() => navigate('/interview')}
@@ -481,21 +516,7 @@ function Dashboard() {
                       Practice Interview Questions
                     </button>
 
-                    <button
-                      onClick={() => navigate('/progress')}
-                      style={{
-                        background: '#011024',
-                        color: 'white',
-                        border: 'none',
-                        padding: '1rem',
-                        borderRadius: '8px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Calendar size={20} />
-                      Set Daily Goal
-                    </button>
+                   
                   </div>
                 </motion.div>
               </div>

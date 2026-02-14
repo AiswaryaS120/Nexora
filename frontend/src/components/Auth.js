@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
-function Auth({ onLogin }) {
+function Auth() {
   const [isSignup, setIsSignup] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,11 +26,10 @@ function Auth({ onLogin }) {
 
       if (response.data.success) {
         if (response.data.token) {
-          localStorage.setItem('token', response.data.token);
-          localStorage.setItem('userId', response.data.userId);
+          // Use context helper to persist auth state
+          login({ token: response.data.token, userId: response.data.userId });
         }
         toast.success(isSignup ? 'Account created! Logging in...' : 'Logged in successfully!');
-        onLogin();
       } else {
         toast.error(response.data.error || 'Something went wrong');
       }

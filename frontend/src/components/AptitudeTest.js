@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
-/* -------------------- QUESTION SETS -------------------- */
+/* -------------------- FULL QUESTION SET -------------------- */
 
  const testSets = [
   {
@@ -85,6 +85,22 @@ import toast from "react-hot-toast";
   }
 ];
 
+/* -------------------- SAVE MISTAKE -------------------- */
+
+const saveMistake = (mistakeData) => {
+  const mistakes = JSON.parse(localStorage.getItem('hirehub_mistakes') || '[]');
+
+  const newMistake = {
+    id: Date.now() + Math.random(),
+    date: new Date().toISOString(),
+    reviewed: false,
+    ...mistakeData
+  };
+
+  mistakes.push(newMistake);
+  localStorage.setItem('hirehub_mistakes', JSON.stringify(mistakes));
+};
+
 export default function AptitudeTest() {
 
   const [currentTest, setCurrentTest] = useState(null);
@@ -107,12 +123,15 @@ export default function AptitudeTest() {
 
   useEffect(() => {
     let timer;
+
     if (isRunning && timeLeft > 0) {
       timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
     }
+
     if (timeLeft === 0 && isRunning) {
       handleSubmit();
     }
+
     return () => clearInterval(timer);
   }, [isRunning, timeLeft]);
 
@@ -135,17 +154,49 @@ export default function AptitudeTest() {
   const handleSubmit = () => {
     setIsRunning(false);
     setShowResult(true);
+    saveMistakesToBook();
   };
 
-  const score = Object.keys(answers).reduce((acc, q) => {
-    return acc + (answers[q] === currentTest.questions[q]?.correct ? 1 : 0);
-  }, 0);
+  const saveMistakesToBook = () => {
+    let mistakeCount = 0;
+
+    currentTest.questions.forEach((question, index) => {
+      const userAnswer = answers[index];
+
+      if (userAnswer === undefined || userAnswer !== question.correct) {
+        saveMistake({
+          type: 'aptitude',
+          topic: 'Aptitude Test',
+          question: question.q,
+          options: question.options,
+          yourAnswer: userAnswer !== undefined ? userAnswer : null,
+          correctAnswer: question.correct,
+          explanation: question.solution
+        });
+        mistakeCount++;
+      }
+    });
+
+    if (mistakeCount > 0) {
+      toast.success(
+        `${mistakeCount} mistake${mistakeCount > 1 ? 's' : ''} saved to Mistake Book 📚`
+      );
+    }
+  };
+
+  const score = currentTest
+    ? currentTest.questions.reduce((acc, q, i) => {
+        return acc + (answers[i] === q.correct ? 1 : 0);
+      }, 0)
+    : 0;
 
   const formatTime = () => {
     const min = Math.floor(timeLeft / 60);
     const sec = timeLeft % 60;
     return `${min}:${sec < 10 ? '0' : ''}${sec}`;
   };
+
+  /* -------------------- START SCREEN -------------------- */
 
   if (!currentTest) {
     return (
@@ -176,10 +227,12 @@ export default function AptitudeTest() {
 
   const question = currentTest.questions[currentQuestion];
 
+  /* -------------------- MAIN TEST -------------------- */
+
   return (
     <div style={{ minHeight: "100vh", background: "#ffffff" }}>
 
-      {/* -------- TOP BAR -------- */}
+      {/* TOP BAR */}
       <div style={{
         width: "100%",
         background: "#011024",
@@ -219,7 +272,6 @@ export default function AptitudeTest() {
         </div>
       </div>
 
-      {/* -------- MAIN CONTENT -------- */}
       {!showResult ? (
         <div style={{
           maxWidth: "800px",
@@ -249,18 +301,7 @@ export default function AptitudeTest() {
                   border: "2px solid #011024",
                   background: answers[currentQuestion] === index ? "#011024" : "#ffffff",
                   color: answers[currentQuestion] === index ? "#ffffff" : "#011024",
-                  cursor: "pointer",
-                  transition: "0.3s"
-                }}
-                onMouseEnter={(e) => {
-                  if (answers[currentQuestion] !== index) {
-                    e.target.style.background = "#e8c441";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (answers[currentQuestion] !== index) {
-                    e.target.style.background = "#ffffff";
-                  }
+                  cursor: "pointer"
                 }}
               >
                 {option}
@@ -274,10 +315,12 @@ export default function AptitudeTest() {
             justifyContent: "space-between"
           }}>
             <button onClick={prevQuestion}>Previous</button>
-            {currentQuestion === currentTest.questions.length - 1 ?
-              <button onClick={handleSubmit}>Finish</button> :
-              <button onClick={nextQuestion}>Next</button>}
+
+            {currentQuestion === currentTest.questions.length - 1
+              ? <button onClick={handleSubmit}>Finish</button>
+              : <button onClick={nextQuestion}>Next</button>}
           </div>
+
         </div>
       ) : (
         <div style={{ maxWidth: "800px", margin: "2rem auto" }}>
