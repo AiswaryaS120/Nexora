@@ -12,6 +12,12 @@ dotenv.config();
 
 const app = express();
 
+// CORS Configuration for Production
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  optionsSuccessStatus: 200
+};
 // Middleware
 app.use(cors({
   origin: 'http://localhost:3000',  // Allow only your frontend
